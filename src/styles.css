@@ -1,0 +1,1382 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --bg: #eef5f2;
+  --surface: #ffffff;
+  --surface-muted: #f6faf8;
+  --ink: #10231f;
+  --muted: #63756f;
+  --line: #dbe7e2;
+  --teal: #0f8b7b;
+  --teal-dark: #086858;
+  --mint: #dff5ed;
+  --blue: #225ea8;
+  --amber: #b7791f;
+  --amber-bg: #fff4d6;
+  --red: #b42318;
+  --red-bg: #ffe5e1;
+  --green: #177245;
+  --green-bg: #dff7e8;
+  --shadow: 0 18px 50px rgba(23, 57, 49, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+* {
+  min-width: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  color: var(--ink);
+  background:
+    linear-gradient(120deg, rgba(15, 139, 123, 0.11), transparent 34%),
+    linear-gradient(300deg, rgba(34, 94, 168, 0.11), transparent 36%),
+    var(--bg);
+}
+
+.bootScreen {
+  display: grid;
+  min-height: 100vh;
+  padding: 24px;
+  color: var(--ink);
+  place-items: center;
+  background: var(--bg);
+}
+
+.bootCard {
+  width: min(560px, 100%);
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.bootCard p:last-child {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.errorCard pre {
+  max-height: 340px;
+  overflow: auto;
+  padding: 14px;
+  white-space: pre-wrap;
+  border-radius: 8px;
+  background: var(--red-bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.appShell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
+  width: 100%;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  height: 100vh;
+  padding: 24px 18px;
+  border-right: 1px solid rgba(219, 231, 226, 0.82);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.brandLockup,
+.navItem,
+.sidebarFoot,
+.statusPill,
+.iconTextButton,
+.secondaryButton,
+.primaryButton,
+.normalizationStrip,
+.agentRow,
+.medRow,
+.severityBadge {
+  display: flex;
+  align-items: center;
+}
+
+.brandLockup {
+  gap: 12px;
+}
+
+.brandLockup strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.brandLockup span:last-child,
+.sidebarFoot,
+.eyebrow,
+.patientBand span,
+.findingBody span,
+.agentRow small,
+.medRow small,
+.labTile small {
+  color: var(--muted);
+}
+
+.brandMark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  color: #fff;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--teal), var(--blue));
+}
+
+.navStack {
+  display: grid;
+  gap: 8px;
+}
+
+.navItem {
+  border: 0;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  font-weight: 750;
+  text-align: left;
+  color: var(--muted);
+  text-decoration: none;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.navItem.active,
+.navItem:hover {
+  color: var(--teal-dark);
+  background: var(--mint);
+}
+
+.sidebarFoot {
+  gap: 10px;
+  margin-top: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.pulseDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--green);
+  box-shadow: 0 0 0 6px rgba(23, 114, 69, 0.12);
+}
+
+.workspace {
+  min-width: 0;
+  padding: 28px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.topbar > *,
+.panelHeader > *,
+.patientBand > *,
+.rowHeader > * {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: clamp(1.7rem, 3vw, 2.65rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 1.08rem;
+  letter-spacing: 0;
+}
+
+h3 {
+  margin-bottom: 8px;
+  font-size: 0.92rem;
+  letter-spacing: 0;
+}
+
+.iconTextButton,
+.secondaryButton,
+.primaryButton,
+.iconButton,
+.inputAction button {
+  border: 0;
+  border-radius: 8px;
+}
+
+.iconTextButton {
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  color: var(--teal-dark);
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(18, 53, 47, 0.08);
+}
+
+.pageStack,
+.primaryColumn,
+.sideStack {
+  display: grid;
+  gap: 20px;
+}
+
+.twoColumn {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.toolPanel,
+.reportPanel {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid rgba(219, 231, 226, 0.94);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.compactPanel {
+  box-shadow: 0 12px 36px rgba(23, 57, 49, 0.09);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.panelHeader h2,
+.topbar h1,
+.patientBand strong,
+.patientBand span {
+  overflow-wrap: anywhere;
+}
+
+.statusPill {
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  color: var(--blue);
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: #e7f0fb;
+}
+
+.lookupRow {
+  display: grid;
+  gap: 8px;
+}
+
+label {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+  background: var(--surface-muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(15, 139, 123, 0.68);
+  box-shadow: 0 0 0 4px rgba(15, 139, 123, 0.1);
+}
+
+textarea {
+  min-height: 110px;
+  padding-top: 12px;
+  resize: vertical;
+}
+
+.inputAction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 8px;
+}
+
+.inputAction button,
+.primaryButton {
+  color: #fff;
+  background: var(--teal);
+}
+
+.patientBand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--mint), #eef4ff);
+}
+
+.patientBand strong,
+.patientBand span {
+  display: block;
+}
+
+.avatar {
+  display: grid;
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  color: var(--teal-dark);
+  place-items: center;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.secondaryButton {
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--teal-dark);
+  background: var(--mint);
+}
+
+.drugEntryGrid {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(120px, 0.45fr) minmax(130px, 0.5fr);
+  gap: 12px;
+}
+
+.drugEntryGrid label {
+  display: grid;
+  gap: 8px;
+}
+
+.fullLabel {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.normalizationStrip {
+  gap: 10px;
+  margin: 16px 0;
+  padding: 12px 14px;
+  color: var(--blue);
+  border: 1px solid #c7dcf5;
+  border-radius: 8px;
+  background: #edf5ff;
+}
+
+.prescriptionList {
+  display: grid;
+  gap: 12px;
+}
+
+.prescriptionRow {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.rowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.textButton {
+  border: 0;
+  color: var(--red);
+  font-weight: 800;
+  background: transparent;
+}
+
+.inlineResolveButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  margin-top: 10px;
+  padding: 0 10px;
+  color: var(--teal-dark);
+  font-size: 0.8rem;
+  font-weight: 850;
+  border: 1px solid rgba(15, 139, 123, 0.22);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.inlineResolveButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.prescriptionFields {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(88px, 0.45fr) minmax(88px, 0.45fr);
+  gap: 10px;
+}
+
+.prescriptionFields label:nth-child(4),
+.prescriptionFields label:nth-child(5) {
+  grid-column: span 1;
+}
+
+.inlineHint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.ingredientStatus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  color: var(--blue);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  border-radius: 999px;
+  background: #e7f0fb;
+}
+
+.ingredientStatus.resolved {
+  color: var(--green);
+  background: var(--green-bg);
+}
+
+.ingredientStatus.ingredient {
+  color: var(--teal-dark);
+  background: var(--mint);
+}
+
+.ingredientStatus.unconfirmed,
+.ingredientStatus.failed {
+  color: var(--amber);
+  background: var(--amber-bg);
+}
+
+.spacedButton {
+  margin-top: 12px;
+}
+
+.actionSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.inlineReport {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.compactFinding {
+  grid-template-columns: 100px minmax(0, 1fr);
+  background: #fff;
+}
+
+.spacedText {
+  margin-top: 10px;
+}
+
+.primaryButton {
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 48px;
+  font-weight: 850;
+}
+
+.reportScore {
+  padding: 7px 10px;
+  color: var(--teal-dark);
+  font-size: 0.84rem;
+  font-weight: 800;
+  border-radius: 999px;
+  background: var(--mint);
+}
+
+.findingsList {
+  display: grid;
+  gap: 12px;
+}
+
+.findingCard {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.severityBadge {
+  align-self: start;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  border-radius: 999px;
+}
+
+.severityBadge.critical {
+  color: #fff;
+  background: var(--red);
+  box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.25);
+  animation: critical-pulse 2s infinite;
+}
+
+.severityBadge.high {
+  color: var(--red);
+  background: var(--red-bg);
+}
+
+.severityBadge.medium {
+  color: var(--amber);
+  background: var(--amber-bg);
+}
+
+.severityBadge.low {
+  color: var(--green);
+  background: var(--green-bg);
+}
+
+.severityBadge.none {
+  color: var(--muted);
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+}
+
+@keyframes critical-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(180, 35, 24, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(180, 35, 24, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(180, 35, 24, 0);
+  }
+}
+
+.findingBody h3 {
+  margin-bottom: 8px;
+  font-size: 1.04rem;
+}
+
+.findingBody p {
+  margin-bottom: 10px;
+  color: #334640;
+  line-height: 1.55;
+}
+
+.findingBody strong {
+  color: var(--teal-dark);
+}
+
+.medRow {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 8px;
+  min-height: 38px;
+  color: #233d37;
+  border-bottom: 1px solid var(--line);
+}
+
+.medRow span,
+.medRow small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.medRow:last-child {
+  border-bottom: 0;
+}
+
+.tagGroup > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clinicalTag {
+  max-width: 100%;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  border-radius: 8px;
+}
+
+.clinicalTag.allergy {
+  color: var(--red);
+  background: var(--red-bg);
+}
+
+.clinicalTag.condition {
+  color: var(--blue);
+  background: #e7f0fb;
+}
+
+.labsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.labTile {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.labTile span,
+.labTile strong,
+.labTile small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.labTile strong {
+  margin: 4px 0;
+  font-size: clamp(1.05rem, 2vw, 1.28rem);
+}
+
+.iconButton {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  color: var(--teal-dark);
+  place-items: center;
+  background: var(--mint);
+}
+
+.agentStack {
+  display: grid;
+  gap: 12px;
+}
+
+.agentRow {
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.agentRow > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  color: var(--teal-dark);
+  place-items: center;
+  border-radius: 8px;
+  background: var(--mint);
+}
+
+.agentRow strong,
+.agentRow small {
+  display: block;
+}
+
+.ehrManageGrid,
+.ehrEditorGrid,
+.managementGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ehrRecordGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.wideRecord {
+  grid-column: 1 / -1;
+}
+
+.miniForm {
+  display: grid;
+  gap: 12px;
+}
+
+.flatForm {
+  padding: 16px;
+}
+
+.miniForm h3 {
+  margin-bottom: 0;
+}
+
+.wideButton {
+  justify-content: center;
+  width: 100%;
+}
+
+.emptyText {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.formGrid,
+.metricGrid,
+.dynamicFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dynamicFields label,
+.wideField {
+  min-width: 0;
+}
+
+.wideField {
+  grid-column: 1 / -1;
+}
+
+.metricTile {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.metricTile span,
+.metricTile strong {
+  display: block;
+}
+
+.metricTile span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.metricTile strong {
+  margin-top: 4px;
+  font-size: 1.7rem;
+}
+
+.tableScroller {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.recordTable {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  background: var(--surface-muted);
+}
+
+.recordTable th,
+.recordTable td {
+  max-width: 320px;
+  padding: 11px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.recordTable th {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.recordTable td {
+  color: #253f39;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.recordTable tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 1080px) {
+  .appShell {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    padding: 18px 12px;
+    align-items: center;
+  }
+
+  .brandLockup div,
+  .navItem,
+  .sidebarFoot span:last-child {
+    display: none;
+  }
+
+  .navItem {
+    width: 46px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .navItem.active,
+  .navItem:hover {
+    display: flex;
+  }
+
+  .twoColumn {
+    grid-template-columns: 1fr;
+  }
+
+  .sideStack {
+    grid-template-columns: 1fr;
+  }
+
+  .ehrRecordGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  .prescriptionFields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .appShell {
+    display: block;
+  }
+
+  .sidebar {
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    height: auto;
+    padding: 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brandLockup div {
+    display: block;
+  }
+
+  .brandLockup span:last-child {
+    display: none;
+  }
+
+  .navStack {
+    display: flex;
+    gap: 6px;
+  }
+
+  .navItem {
+    display: flex;
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+  }
+
+  .sidebarFoot {
+    display: none;
+  }
+
+  .workspace {
+    padding: 16px 12px 24px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+  }
+
+  .iconTextButton {
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .iconTextButton {
+    font-size: 0;
+  }
+
+  .drugEntryGrid,
+  .prescriptionFields,
+  .actionSplit,
+  .sideStack,
+  .managementGrid,
+  .ehrManageGrid,
+  .ehrEditorGrid,
+  .formGrid,
+  .metricGrid,
+  .dynamicFields {
+    grid-template-columns: 1fr;
+  }
+
+  .prescriptionFields label:nth-child(4),
+  .prescriptionFields label:nth-child(5) {
+    grid-column: auto;
+  }
+
+  .findingCard {
+    grid-template-columns: 1fr;
+  }
+
+  .severityBadge {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 480px) {
+  .brandMark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .navStack {
+    max-width: 188px;
+    overflow-x: auto;
+  }
+
+  .toolPanel,
+  .reportPanel {
+    padding: 14px;
+  }
+
+  .panelHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .statusPill,
+  .secondaryButton {
+    white-space: normal;
+  }
+
+  .patientBand {
+    align-items: flex-start;
+  }
+
+  .rowHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .labsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .medRow {
+    grid-template-columns: 20px minmax(0, 1fr);
+  }
+
+  .medRow small {
+    grid-column: 2;
+  }
+}
+
+/* Premium DDI Citations & References Styling */
+.findingEvidence {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.evidenceTitle {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.evidenceList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.evidenceList li {
+  display: flex;
+  align-items: flex-start;
+}
+
+.evidenceLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--teal);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+  line-height: 1.4;
+}
+
+.evidenceLink:hover {
+  color: var(--teal-dark);
+  border-bottom-color: var(--teal-dark);
+}
+
+.evidenceText {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* Reports Split Layout */
+.reportsLayout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.reportsSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reportsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Scrollbar styling for reports list */
+.reportsList::-webkit-scrollbar {
+  width: 6px;
+}
+.reportsList::-webkit-scrollbar-track {
+  background: transparent;
+}
+.reportsList::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+.reportsList::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+.reportListItem {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  width: 100%;
+}
+
+.reportListItem:hover {
+  border-color: var(--teal);
+  box-shadow: 0 4px 12px rgba(15, 139, 123, 0.08);
+  transform: translateY(-1px);
+}
+
+.reportListItem.active {
+  border-color: var(--teal);
+  background: var(--mint);
+  box-shadow: 0 4px 16px rgba(15, 139, 123, 0.12);
+}
+
+.reportListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.reportListDate {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.reportListMeds {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+}
+
+.reportListStatus {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Active Report Details */
+.activeReportContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.clinicalSummaryBox {
+  padding: 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0f7f4, #edf5ff);
+  border: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+}
+
+.clinicalSummaryBox::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, var(--teal), var(--blue));
+}
+
+.clinicalSummaryBox h3 {
+  font-size: 0.96rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--teal-dark);
+  margin-bottom: 10px;
+}
+
+.clinicalSummaryText {
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: #233d37;
+  margin: 0;
+}
+
+.reportDetailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reportTitleGroup h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.reportMetaText {
+  font-size: 0.84rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.findingsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.findingDetailCard {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+  overflow: hidden;
+}
+
+.findingDetailHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--line);
+}
+
+.findingDetailTitle {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--ink);
+  margin: 0;
+  flex: 1;
+}
+
+.findingDetailBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.findingSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.findingSectionLabel {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+.findingExplanation {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #2c3e39;
+  margin: 0;
+}
+
+.findingRecommendation {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--teal-dark);
+  font-weight: 600;
+  margin: 0;
+  padding: 12px;
+  background: var(--mint);
+  border-radius: 8px;
+}
+
+/* Empty states */
+.reportsEmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 40px;
+  border: 2px dashed var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  gap: 16px;
+  width: 100%;
+}
+
+.reportsEmptyState p {
+  color: var(--muted);
+  max-width: 420px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Responsiveness for reports layout */
+@media (max-width: 1080px) {
+  .reportsLayout {
+    grid-template-columns: 1fr;
+  }
+  .reportsList {
+    max-height: 250px;
+  }
+}
+

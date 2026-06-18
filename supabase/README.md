@@ -57,7 +57,7 @@ This function:
 
 - fetches the patient record from Supabase
 - compares proposed drugs against each other and against active EHR medications
-- retrieves DDI evidence using Gemini 3.5 Flash Google Search Grounding targeting DrugBank, PubMed, Medscape, and Drugs.com
+- retrieves DDI evidence using Gemini 3.5 Flash Google Search Grounding targeting PubMed, Medscape, Drugs.com, and Empathia AI
 - produces the final clinically-reasoned DDI report
 - stores the review session in `prescription_review_sessions` and `interaction_findings`
 

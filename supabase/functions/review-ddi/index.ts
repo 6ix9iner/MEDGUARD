@@ -42,8 +42,13 @@ type ReviewFinding = {
   type: string;
   severity: "none" | "low" | "medium" | "high" | "critical";
   signal: string;
+  reasoning?: string;
   detail: string;
   action: string;
+  left?: string;
+  right?: string;
+  leftSource?: string;
+  rightSource?: string;
   evidence: Array<{
     source: string;
     title: string;
@@ -227,6 +232,63 @@ const buildEhrSummary = (ehr: PatientEhr) => {
   };
 };
 
+const expandProposedMedications = (meds: ProposedMedicationInput[]): ProposedMedicationInput[] => {
+  const expanded: ProposedMedicationInput[] = [];
+  for (const med of meds) {
+    const rawIng = String(med.ingredient || med.name || "").trim();
+    if (!rawIng) continue;
+    const ingredients = rawIng
+      .split(/[,;/+]+|\band\b/i)
+      .map((i) => i.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (ingredients.length <= 1) {
+      expanded.push(med);
+    } else {
+      for (const ing of ingredients) {
+        const originalName = String(med.name || med.ingredient || "").trim();
+        const nameHasIngredient = originalName.toLowerCase().includes(ing);
+        const hasSeparators = /[,;/+]|\band\b/i.test(originalName);
+        const name = hasSeparators ? ing : (nameHasIngredient ? originalName : `${originalName} (${ing})`);
+        expanded.push({
+          ...med,
+          name,
+          ingredient: ing,
+        });
+      }
+    }
+  }
+  return expanded;
+};
+
+const expandActiveMedications = (activeMeds: Array<{ active_ingredient: string; medication_display: string }>) => {
+  const expanded: Array<{ active_ingredient: string; medication_display: string }> = [];
+  for (const med of activeMeds) {
+    const rawIng = String(med.active_ingredient || "").trim();
+    if (!rawIng) continue;
+    const ingredients = rawIng
+      .split(/[,;/+]+|\band\b/i)
+      .map((i) => i.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (ingredients.length <= 1) {
+      expanded.push(med);
+    } else {
+      for (const ing of ingredients) {
+        const originalDisplay = String(med.medication_display || "").trim();
+        const displayHasIngredient = originalDisplay.toLowerCase().includes(ing);
+        const hasSeparators = /[,;/+]|\band\b/i.test(originalDisplay);
+        const display = hasSeparators ? ing : (displayHasIngredient ? originalDisplay : `${originalDisplay} (${ing})`);
+        expanded.push({
+          active_ingredient: ing,
+          medication_display: display,
+        });
+      }
+    }
+  }
+  return expanded;
+};
+
 const buildPairReviews = (proposed: ProposedMedicationInput[], activeMeds: Array<{ active_ingredient: string; medication_display: string }>) => {
   const pairs: PairReview[] = [];
   const seen = new Set<string>();
@@ -278,90 +340,138 @@ const callGeminiForDdiReview = async (
   ehrSummary: ReturnType<typeof buildEhrSummary>,
   proposedMedications: ProposedMedicationInput[],
   pairReviews: PairReview[],
+  enableSearch: boolean,
 ) => {
   const { accessToken, projectId } = await createGoogleAccessToken();
   const endpoint =
     `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-3.5-flash:generateContent`;
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      systemInstruction: {
-        role: "system",
-        parts: [
-          {
-            text:
-              "You are an expert clinical drug-drug interaction review agent equipped with Google Search Grounding.\n" +
-              "Your task is to analyze potential drug-drug interactions (DDIs) for the provided medication pairs (proposed-proposed and proposed-current) in the context of the patient's EHR.\n\n" +
-              "Follow these strict clinical rules:\n" +
-              "1. Perform rigorous clinical reasoning. Analyze pharmacokinetic risks (e.g. CYP450 metabolism, absorption/clearance changes) and pharmacodynamic risks (e.g. additive QTc prolongation, anticholinergic burden, CNS depressant combination, nephrotoxicity 'triple whammy').\n" +
-              "2. Integrate patient context. Check the patient's existing active conditions, allergies, and observations (e.g. renal/hepatic status, lab abnormalities) to see if they increase the risk.\n" +
-              "3. Use Google Search to find clinical evidence. You MUST ONLY cite from these 5 approved sources — NO OTHER WEBSITES ALLOWED:\n" +
-              "   - Drugs.com (drugs.com) — e.g. https://www.drugs.com/drug-interactions/drugA-with-drugB.html\n" +
-              "   - PubMed (pubmed.ncbi.nlm.nih.gov) — e.g. https://pubmed.ncbi.nlm.nih.gov/12345678/\n" +
-              "   - Medscape (reference.medscape.com or www.medscape.com) — e.g. https://reference.medscape.com/drug-interactionchecker\n" +
-              "   - DrugBank (go.drugbank.com) — e.g. https://go.drugbank.com/drugs/DB00001\n" +
-              "   - Empathia AI (empathia.ai) — e.g. https://empathia.ai/blog/drugA-and-drugB-drug-interaction\n" +
-              "   STRICTLY FORBIDDEN: Do not cite Google, Wikipedia, WebMD, RxList, FDA.gov, NIH.gov, or any other website. Every URL must belong to one of the 5 approved domains above.\n" +
-              "4. You must evaluate every single provided medication pair. For every pair that has a documented clinical interaction of any severity ('low', 'medium', 'high', 'critical'), you MUST generate a corresponding finding in findingsText. Do not omit moderate or mild interactions in favor of more severe ones. Omit drug pairs ONLY if they have absolutely no clinical interaction (severity 'none').\n" +
-              "5. Keep the explanation ('detail') and action item ('action') extremely concise (maximum 2-3 sentences each) to prevent response truncation.\n" +
-              "6. For each finding, provide 1-2 evidence citations. Each citation must specify source, title, and exact URL from the 5 approved sources only. The URL must contain the names of the specific drugs involved — not a generic homepage URL.\n\n" +
-              "CRITICAL: The output must be a 100% valid JSON object matching the schema below. To ensure stable generation with Google Search Grounding, you must output a flat JSON structure containing overallSeverity, clinicalSummary, and a single plain text block containing all findings ('findingsText'). Do not output any nested JSON arrays or objects for findings, as this conflicts with search grounding.\n\n" +
-              "All keys (overallSeverity, clinicalSummary, findingsText) are mandatory. The overallSeverity must be strictly one of: 'none', 'low', 'medium', 'high', 'critical' (all lowercase).\n\n" +
-              "Return strict JSON matching this schema:\n" +
-              "{\n" +
-              "  \"overallSeverity\": \"high\",\n" +
-              "  \"clinicalSummary\": \"Clinical overview of risks...\",\n" +
-              "  \"findingsText\": \"Finding 1:\\nSeverity: critical\\nSignal: DrugA and DrugB Interaction\\nDetail: Mechanism.\\nAction: Recommendation.\\nEvidence: Drugs.com | DrugA and DrugB Drug Interactions | https://www.drugs.com/drug-interactions/druga-with-drugb.html\"\n" +
-              "}\n\n" +
-              "Format findingsText exactly as a plain text string for each finding. Separate multiple findings with a double newline:\n\n" +
-              "Finding N:\n" +
-              "Severity: [none|low|medium|high|critical]\n" +
-              "Signal: [Both drug names, e.g., DrugA and DrugB Interaction]\n" +
-              "Detail: [Concise clinical explanation, max 2-3 sentences]\n" +
-              "Action: [Clinical recommendation, max 2-3 sentences]\n" +
-              "Evidence: [One of: Drugs.com | PubMed | Medscape | DrugBank | Empathia AI] | [Specific title mentioning both drugs] | [URL from that approved domain containing both drug names]\n" +
-              "Evidence: [Second citation if available — also from approved domains only]",
+  const systemInstructionText = enableSearch
+    ? "You are an expert clinical drug-drug interaction review agent equipped with Google Search Grounding.\n" +
+      "Your task is to analyze potential drug-drug interactions (DDIs) for the provided medication pairs (proposed-proposed and proposed-current) in the context of the patient's EHR.\n\n" +
+      "Follow these strict clinical rules:\n" +
+      "1. Perform rigorous clinical reasoning. First, perform medical reasoning on the clinical evidence and context. You must analyze the evidence step-by-step to explain the physiological/pharmacological mechanism of the interaction, how it relates to this specific patient's conditions/labs, and what clinical decision should be made. Write this reasoning process in the 'Reasoning:' section of each finding before detailing the final message.\n" +
+      "2. Integrate patient context. Check the patient's existing active conditions, allergies, and observations (e.g. renal/hepatic status, lab abnormalities) to see if they increase the risk.\n" +
+      "3. Use Google Search Grounding to read and analyze clinical evidence from the 4 approved sources (Drugs.com, PubMed, Medscape, Empathia AI). Do NOT output any URLs, source names, or citations in your response.\n" +
+      "4. You must evaluate every single provided medication pair. For every pair that has a documented clinical interaction of any severity ('low', 'medium', 'high', 'critical'), you MUST generate a corresponding finding in findingsText. Do not omit moderate or mild interactions in favor of more severe ones. Omit drug pairs ONLY if they have absolutely no clinical interaction (severity 'none').\n" +
+      "5. Keep the explanation ('detail') and action item ('action') extremely concise (maximum 2-3 sentences each) to prevent response truncation.\n\n" +
+      "CRITICAL: The output must be a 100% valid JSON object matching the schema below. To ensure stable generation with Google Search Grounding, you must output a flat JSON structure containing overallSeverity, clinicalSummary, and a single plain text block containing all findings ('findingsText'). Do not output any nested JSON arrays or objects for findings, as this conflicts with search grounding.\n\n" +
+      "All keys (overallSeverity, clinicalSummary, findingsText) are mandatory. The overallSeverity must be strictly one of: 'none', 'low', 'medium', 'high', 'critical' (all lowercase).\n\n" +
+      "Return strict JSON matching this schema:\n" +
+      "{\n" +
+      "  \"overallSeverity\": \"high\",\n" +
+      "  \"clinicalSummary\": \"Clinical overview of risks...\",\n" +
+      "  \"findingsText\": \"Finding 1:\\nSeverity: critical\\nSignal: DrugA and DrugB Interaction\\nReasoning: Medical reasoning based on RAG source information goes here.\\nDetail: Mechanism.\\nAction: Recommendation.\"\n" +
+      "}\n\n" +
+      "Format findingsText exactly as a plain text string for each finding. Separate multiple findings with a double newline:\n\n" +
+      "Finding N:\n" +
+      "Severity: [none|low|medium|high|critical]\n" +
+      "Signal: [Both drug names, e.g., DrugA and DrugB Interaction]\n" +
+      "Reasoning: [Structured medical/clinical reasoning based on the retrieved search results/context, explaining mechanisms and patient-specific risks]\n" +
+      "Detail: [Concise clinical explanation, max 2-3 sentences]\n" +
+      "Action: [Clinical recommendation, max 2-3 sentences]"
+    : "You are an expert clinical drug-drug interaction review agent.\n" +
+      "Your task is to analyze potential drug-drug interactions (DDIs) for the provided medication pairs (proposed-proposed and proposed-current) in the context of the patient's EHR.\n\n" +
+      "Follow these strict clinical rules:\n" +
+      "1. Perform rigorous clinical reasoning. First, perform medical reasoning on the clinical context. You must analyze the evidence step-by-step to explain the physiological/pharmacological mechanism of the interaction, how it relates to this specific patient's conditions/labs, and what clinical decision should be made. Write this reasoning process in the 'Reasoning:' section of each finding before detailing the final message.\n" +
+      "2. Integrate patient context. Check the patient's existing active conditions, allergies, and observations (e.g. renal/hepatic status, lab abnormalities) to see if they increase the risk.\n" +
+      "3. Do NOT search Google, do NOT cite any sources, and do NOT provide any evidence URLs.\n" +
+      "4. You must evaluate every single provided medication pair. For every pair that has a documented clinical interaction of any severity ('low', 'medium', 'high', 'critical'), you MUST generate a corresponding finding in findingsText. Do not omit moderate or mild interactions in favor of more severe ones. Omit drug pairs ONLY if they have absolutely no clinical interaction (severity 'none').\n" +
+      "5. Keep the explanation ('detail') and action item ('action') extremely concise (maximum 2-3 sentences each) to prevent response truncation.\n\n" +
+      "CRITICAL: The output must be a 100% valid JSON object matching the schema below. You must output a flat JSON structure containing overallSeverity, clinicalSummary, and a single plain text block containing all findings ('findingsText').\n\n" +
+      "All keys (overallSeverity, clinicalSummary, findingsText) are mandatory. The overallSeverity must be strictly one of: 'none', 'low', 'medium', 'high', 'critical' (all lowercase).\n\n" +
+      "Return strict JSON matching this schema:\n" +
+      "{\n" +
+      "  \"overallSeverity\": \"high\",\n" +
+      "  \"clinicalSummary\": \"Clinical overview of risks...\",\n" +
+      "  \"findingsText\": \"Finding 1:\\nSeverity: critical\\nSignal: DrugA and DrugB Interaction\\nReasoning: Medical reasoning goes here.\\nDetail: Mechanism.\\nAction: Recommendation.\"\n" +
+      "}\n\n" +
+      "Format findingsText exactly as a plain text string for each finding. Separate multiple findings with a double newline:\n\n" +
+      "Finding N:\n" +
+      "Severity: [none|low|medium|high|critical]\n" +
+      "Signal: [Both drug names, e.g., DrugA and DrugB Interaction]\n" +
+      "Reasoning: [Structured medical/clinical reasoning based on the clinical context, explaining mechanisms and patient-specific risks]\n" +
+      "Detail: [Concise clinical explanation, max 2-3 sentences]\n" +
+      "Action: [Clinical recommendation, max 2-3 sentences]";
+
+  let response: Response | null = null;
+  let attempt = 0;
+  const maxAttempts = 3;
+  let delayMs = 1500;
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            role: "system",
+            parts: [
+              {
+                text: systemInstructionText,
+              },
+            ],
           },
-        ],
-      },
-      contents: [
-        {
-          role: "user",
-          parts: [
+          contents: [
             {
-              text: JSON.stringify({
-                patientCode,
-                task: "Review proposed medications for drug-drug interactions against each other and against the patient's active medications. Identify risk severity and detail findings.",
-                proposedMedications,
-                patientEhrSummary: ehrSummary,
-                medicationPairsToCheck: pairReviews.map((pair) => ({
-                  pairType: pair.pairType,
-                  left: pair.left,
-                  right: pair.right,
-                  leftSource: pair.leftSource,
-                  rightSource: pair.rightSource,
-                })),
-              }),
+              role: "user",
+              parts: [
+                {
+                  text: JSON.stringify({
+                    patientCode,
+                    task: "Review proposed medications for drug-drug interactions against each other and against the patient's active medications. Identify risk severity and detail findings.",
+                    proposedMedications,
+                    patientEhrSummary: ehrSummary,
+                    medicationPairsToCheck: pairReviews.map((pair) => ({
+                      pairType: pair.pairType,
+                      left: pair.left,
+                      right: pair.right,
+                      leftSource: pair.leftSource,
+                      rightSource: pair.rightSource,
+                    })),
+                  }),
+                },
+              ],
             },
           ],
-        },
-      ],
-      tools: [
-        {
-          google_search: {},
-        },
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 8192,
-      },
-    }),
-  });
+          ...(enableSearch ? {
+            tools: [
+              {
+                google_search: {},
+              },
+            ],
+          } : {}),
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8192,
+          },
+        }),
+      });
+
+      if (response.status === 429) {
+        console.warn(`Gemini API returned 429 (Resource Exhausted) on attempt ${attempt}. Retrying in ${delayMs}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        delayMs *= 2;
+        continue;
+      }
+
+      break;
+    } catch (fetchErr) {
+      console.warn(`Fetch error on attempt ${attempt}:`, fetchErr);
+      if (attempt >= maxAttempts) throw fetchErr;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      delayMs *= 2;
+    }
+  }
+
+  if (!response) {
+    throw new Error("Failed to receive response from Gemini.");
+  }
 
   if (!response.ok) {
     const detail = await response.text();
@@ -385,6 +495,89 @@ const callGeminiForDdiReview = async (
   }
 };
 
+const callGeminiForDdiReferences = async (
+  pair: { left: string; right: string; leftSource: string; rightSource: string },
+) => {
+  const { accessToken, projectId } = await createGoogleAccessToken();
+  const endpoint =
+    `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-3.5-flash:generateContent`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      systemInstruction: {
+        role: "system",
+        parts: [
+          {
+            text:
+              "You are an expert clinical drug-drug interaction reference agent equipped with Google Search Grounding.\n" +
+              "Your task is to find reliable clinical evidence references for the interaction between the following two medications:\n" +
+              `Medication 1: ${pair.left} (brand/display: ${pair.leftSource})\n` +
+              `Medication 2: ${pair.right} (brand/display: ${pair.rightSource})\n\n` +
+              "Follow these strict rules:\n" +
+              "1. Search Google to find direct evidence of their interaction, and determine which of the 4 approved sources support it:\n" +
+              "   - S1: Drugs.com\n" +
+              "   - S2: PubMed\n" +
+              "   - S3: Medscape\n" +
+              "   - S4: Empathia AI\n" +
+              "   CRITICAL: Do NOT output any URLs or web addresses. Only return the source IDs (e.g. S1, S2) for the sources that have evidence.\n" +
+              "2. Return a valid JSON object only — no markdown.\n\n" +
+              "Return strict JSON:\n" +
+              "{\n" +
+              "  \"sources\": [\"S1\", \"S2\"]\n" +
+              "}",
+          },
+        ],
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `Please find clinical references for the interaction between ${pair.left} and ${pair.right}.`,
+            },
+          ],
+        },
+      ],
+      tools: [
+        {
+          google_search: {},
+        },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Gemini references call failed: ${response.status} ${detail}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("") || "";
+  if (!text.trim()) {
+    console.error("Gemini references call returned empty text. Full API response:", JSON.stringify(data));
+    throw new Error(`Gemini returned an empty references payload. Full response: ${JSON.stringify(data)}`);
+  }
+
+  const groundingChunks = data?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+
+  try {
+    const parsed = parseJsonResponseText(text);
+    return { parsed, groundingChunks };
+  } catch (parseError) {
+    console.error("Failed to parse Gemini references response JSON. Raw text:", text, "Full API response:", JSON.stringify(data));
+    throw new Error(`JSON parse failure: ${parseError instanceof Error ? parseError.message : String(parseError)}. Raw text: ${text}`);
+  }
+};
+
 const cleanDrugName = (name: string): string => {
   let cleaned = name.toLowerCase().trim();
   const salts = [
@@ -400,7 +593,36 @@ const cleanDrugName = (name: string): string => {
   return cleaned.replace(/\s+/g, " ").trim();
 };
 
-const isUrlValidAndSpecific = (url: string, source: string, involvedIngredients: string[]): boolean => {
+const cleanIngredientForUrl = (name: string): string => {
+  if (!name) return "";
+  let cleaned = name.toLowerCase().trim();
+  const salts = [
+    "hydrochloride", "hydrobromide", "besylate", "maleate", "sodium", "potassium", 
+    "calcium", "bisulfate", "sulfate", "tartrate", "phosphate", "acetate", 
+    "fumarate", "mesylate", "estolate", "valerate", "succinate", "camsylate", 
+    "nitrate", "chloride", "hcl", "mesilate", "besilate", "flesinoxan", "dipotassium"
+  ];
+  salts.forEach((salt) => {
+    const regex = new RegExp(`\\b${salt}\\b`, "gi");
+    cleaned = cleaned.replace(regex, "");
+  });
+  cleaned = cleaned.replace(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|%)\b/gi, "");
+  cleaned = cleaned.replace(/\b\d+(\.\d+)?\b/gi, "");
+  const dosageForms = [
+    "oral tablet", "oral capsule", "tablet", "capsule", "injection", "solution", 
+    "suspension", "extended release", "delayed release", "xr", "er", "release", 
+    "oral", "topical", "cream", "ointment", "spray", "inhaler", "liquid"
+  ];
+  dosageForms.forEach((form) => {
+    const regex = new RegExp(`\\b${form}\\b`, "gi");
+    cleaned = cleaned.replace(regex, "");
+  });
+  cleaned = cleaned.replace(/\//g, " ");
+  cleaned = cleaned.replace(/[^a-z0-9\s-]/gi, "");
+  return cleaned.replace(/\s+/g, " ").trim();
+};
+
+const isUrlValidAndSpecific = (url: string, source: string, involvedGroups: string[][]): boolean => {
   const urlLower = url.toLowerCase().trim();
   if (!urlLower || urlLower.includes("example.com")) return false;
   
@@ -409,7 +631,6 @@ const isUrlValidAndSpecific = (url: string, source: string, involvedIngredients:
     "https://pubmed.ncbi.nlm.nih.gov", "https://pubmed.ncbi.nlm.nih.gov/",
     "https://www.medscape.com", "https://medscape.com", "https://www.medscape.com/", "https://medscape.com/",
     "https://reference.medscape.com", "https://reference.medscape.com/",
-    "https://go.drugbank.com", "https://drugbank.com", "https://go.drugbank.com/",
     "https://empathia.ai", "https://empathia.ai/", "https://www.empathia.ai"
   ];
   if (genericUrls.includes(urlLower)) return false;
@@ -423,19 +644,163 @@ const isUrlValidAndSpecific = (url: string, source: string, involvedIngredients:
     urlLower.includes("search.php?searchterm=") ||
     urlLower.includes("term=") ||
     urlLower.includes("search/?q=") ||
-    urlLower.includes("unearth/q?query=") ||
     urlLower.includes("google.com/search?q=")
   ) {
     return true;
   }
 
-  const hasInvolvedIngredient = involvedIngredients.some((ing) => {
-    const formatted = ing.replace(/\s+/g, "-");
-    return urlLower.includes(formatted) || urlLower.includes(ing);
+  // Check if URL contains at least one alias from each group
+  const matchesAllGroups = involvedGroups.every((aliases) => {
+    return aliases.some((alias) => {
+      const formatted = alias.replace(/\s+/g, "-");
+      return urlLower.includes(formatted) || urlLower.includes(alias);
+    });
   });
-  if (!hasInvolvedIngredient) return false;
 
-  return true;
+  return matchesAllGroups;
+};
+
+const parseSourcesFromLine = (lineContent: string): string[] => {
+  const parts = lineContent.split("|").map(p => p.trim());
+  if (parts.length >= 3) {
+    const src = parts[0].toLowerCase();
+    if (src.includes("drugs.com")) return ["S1"];
+    if (src.includes("pubmed")) return ["S2"];
+    if (src.includes("medscape")) return ["S3"];
+    if (src.includes("empathia")) return ["S4"];
+  }
+  
+  const rawIds = lineContent.split(/[,;]+/).map(p => p.trim());
+  const found: string[] = [];
+  for (const raw of rawIds) {
+    const lower = raw.toLowerCase();
+    if (lower === "s1" || lower.includes("drugs.com")) found.push("S1");
+    else if (lower === "s2" || lower.includes("pubmed")) found.push("S2");
+    else if (lower === "s3" || lower.includes("medscape")) found.push("S3");
+    else if (lower === "s4" || lower.includes("empathia")) found.push("S4");
+  }
+  return found;
+};
+
+const buildEvidenceUrl = (
+  sourceId: string,
+  left: string,
+  right: string,
+  leftSource: string,
+  rightSource: string
+): { source: string; title: string; url: string } => {
+  const name1 = cleanIngredientForUrl(leftSource || left);
+  const name2 = cleanIngredientForUrl(rightSource || right);
+  const query = `${name1} and ${name2} interaction`;
+  const encoded = encodeURIComponent(query);
+
+  switch (sourceId.toUpperCase()) {
+    case "S1":
+    case "DRUGS_COM":
+      return {
+        source: "Drugs.com",
+        title: `${name1} and ${name2} Drug Interaction — Drugs.com`,
+        url: `https://www.drugs.com/search.php?searchterm=${encodeURIComponent(name1 + " " + name2 + " interaction")}`,
+      };
+    case "S2":
+    case "PUBMED":
+      return {
+        source: "PubMed",
+        title: `${name1} and ${name2} interaction — PubMed`,
+        url: `https://pubmed.ncbi.nlm.nih.gov/?term=${encoded}`,
+      };
+    case "S3":
+    case "MEDSCAPE":
+      return {
+        source: "Medscape",
+        title: `${name1} and ${name2} interaction — Medscape`,
+        url: `https://search.medscape.com/search/?q=${encoded}`,
+      };
+    case "S4":
+    case "EMPATHIA_AI":
+      return {
+        source: "Empathia AI",
+        title: `${name1} and ${name2} Drug Interaction — Empathia AI`,
+        url: `https://empathia.ai/drug-interaction/${encodeURIComponent(name1)}-${encodeURIComponent(name2)}`,
+      };
+    default:
+      return {
+        source: "Drugs.com",
+        title: `${name1} and ${name2} Drug Interaction Search — Drugs.com`,
+        url: `https://www.drugs.com/search.php?searchterm=${encodeURIComponent(name1 + " " + name2 + " interaction")}`,
+      };
+  }
+};
+
+const resolveEvidenceFromSourceId = (
+  sourceId: string,
+  left: string,
+  right: string,
+  leftSource: string,
+  rightSource: string,
+  groundingChunks: Array<{ web?: { uri: string; title: string } }>,
+  allMedGroups: string[][]
+): { source: string; title: string; url: string } => {
+  const fallback = buildEvidenceUrl(sourceId, left, right, leftSource, rightSource);
+  
+  const targetDomain = 
+    sourceId === "S1" ? "drugs.com" :
+    sourceId === "S2" ? "pubmed.ncbi.nlm.nih.gov" :
+    sourceId === "S3" ? "medscape.com" :
+    sourceId === "S4" ? "empathia.ai" : "";
+    
+  if (!targetDomain) return fallback;
+
+  const bestChunk = groundingChunks.find((chunk) => {
+    const uri = (chunk.web?.uri || "").toLowerCase();
+    const title = (chunk.web?.title || "").toLowerCase();
+    
+    if (!uri.includes(targetDomain)) return false;
+    
+    const leftAliases = [cleanDrugName(left), cleanDrugName(leftSource)].filter(Boolean);
+    const rightAliases = [cleanDrugName(right), cleanDrugName(rightSource)].filter(Boolean);
+    
+    const matchesLeft = leftAliases.some(alias => uri.includes(alias.replace(/\s+/g, "-")) || title.includes(alias));
+    const matchesRight = rightAliases.some(alias => uri.includes(alias.replace(/\s+/g, "-")) || title.includes(alias));
+    
+    if (!matchesLeft || !matchesRight) return false;
+    
+    let hasOther = false;
+    for (const group of allMedGroups) {
+      const isCurrentPair = 
+        leftAliases.some(alias => group.includes(alias)) || 
+        rightAliases.some(alias => group.includes(alias));
+      if (isCurrentPair) continue;
+
+      const matchesOther = group.some((alias) => {
+        const formatted = alias.replace(/\s+/g, "-");
+        return uri.includes(formatted) || title.includes(alias);
+      });
+
+      if (matchesOther) {
+        hasOther = true;
+        break;
+      }
+    }
+    if (hasOther) return false;
+
+    if (uri.includes("drugs.com/drug-interactions/")) {
+      const hasIds = /-\d+-\d+-\d+-\d+\.html/.test(uri);
+      if (!hasIds) return false;
+    }
+    
+    return true;
+  });
+
+  if (bestChunk?.web?.uri) {
+    return {
+      source: fallback.source,
+      title: bestChunk.web.title || fallback.title,
+      url: bestChunk.web.uri,
+    };
+  }
+
+  return fallback;
 };
 
 const parseFindingsText = (text: string): ReviewFinding[] => {
@@ -447,6 +812,7 @@ const parseFindingsText = (text: string): ReviewFinding[] => {
     
     let severity: ReviewFinding["severity"] = "low";
     let signal = "";
+    let reasoning = "";
     let detail = "";
     let action = "";
     const evidence: ReviewFinding["evidence"] = [];
@@ -470,6 +836,12 @@ const parseFindingsText = (text: string): ReviewFinding[] => {
         signal = sigMatch[1].trim();
         continue;
       }
+
+      const reasMatch = trimmed.match(/^reasoning:\s*(.*)/i);
+      if (reasMatch) {
+        reasoning = reasMatch[1].trim();
+        continue;
+      }
       
       const detMatch = trimmed.match(/^detail:\s*(.*)/i);
       if (detMatch) {
@@ -483,16 +855,17 @@ const parseFindingsText = (text: string): ReviewFinding[] => {
         continue;
       }
       
-      const evMatch = trimmed.match(/^evidence:\s*(.*)/i);
+      const evMatch = trimmed.match(/^(?:evidence|sources?):\s*(.*)/i);
       if (evMatch) {
-        const parts = evMatch[1].split("|").map(p => p.trim());
-        if (parts.length >= 3) {
+        const sourceLine = evMatch[1].trim();
+        const parsedIds = parseSourcesFromLine(sourceLine);
+        parsedIds.forEach((id) => {
           evidence.push({
-            source: parts[0],
-            title: parts[1],
-            url: parts[2],
+            source: id,
+            title: "",
+            url: "",
           });
-        }
+        });
         continue;
       }
     }
@@ -502,6 +875,7 @@ const parseFindingsText = (text: string): ReviewFinding[] => {
         type: "Drug-Drug",
         severity,
         signal,
+        reasoning: reasoning || "",
         detail: detail || "No detail provided.",
         action: action || "No action recommended.",
         evidence,
@@ -516,226 +890,91 @@ const correctEvidenceUrls = (
   findings: ReviewFinding[],
   groundingChunks: Array<{ web?: { uri: string; title: string } }>,
   allIngredients: string[],
-  pairReviews: PairReview[]
+  pairReviews: PairReview[],
+  proposedMedications: ProposedMedicationInput[],
+  activeMeds: Array<{ active_ingredient: string; medication_display: string }>
 ): ReviewFinding[] => {
-  if (!groundingChunks || groundingChunks.length === 0) {
-    return findings;
-  }
+  const allMedGroups: string[][] = [];
+  proposedMedications.forEach((med) => {
+    const aliases = [
+      cleanDrugName(med.ingredient || ""),
+      cleanDrugName(med.name || ""),
+      cleanDrugName((med.name || "").split(" ")[0])
+    ].filter(Boolean);
+    if (aliases.length > 0) {
+      allMedGroups.push(aliases);
+    }
+  });
+  activeMeds.forEach((med) => {
+    const aliases = [
+      cleanDrugName(med.active_ingredient || ""),
+      cleanDrugName(med.medication_display || ""),
+      cleanDrugName((med.medication_display || "").split(" ")[0])
+    ].filter(Boolean);
+    if (aliases.length > 0) {
+      allMedGroups.push(aliases);
+    }
+  });
 
   return findings.map((finding) => {
     const signalLower = cleanDrugName(finding.signal);
     const detailLower = cleanDrugName(finding.detail);
     
-    // Find all ingredients mentioned in the signal or detail
-    let involvedIngredients: string[] = [];
-    
-    // First try to match from pairReviews directly
     const matchingPair = pairReviews.find((pair) => {
-      const leftClean = cleanDrugName(pair.left);
-      const rightClean = cleanDrugName(pair.right);
+      const leftAliases = [
+        cleanDrugName(pair.left),
+        cleanDrugName(pair.leftSource),
+        cleanDrugName(pair.leftSource.split(" ")[0])
+      ].filter(Boolean);
       
-      const sigHasLeft = signalLower.includes(leftClean);
-      const sigHasRight = signalLower.includes(rightClean);
-      const detHasLeft = detailLower.includes(leftClean);
-      const detHasRight = detailLower.includes(rightClean);
+      const rightAliases = [
+        cleanDrugName(pair.right),
+        cleanDrugName(pair.rightSource),
+        cleanDrugName(pair.rightSource.split(" ")[0])
+      ].filter(Boolean);
+      
+      const sigHasLeft = leftAliases.some((alias) => signalLower.includes(alias));
+      const sigHasRight = rightAliases.some((alias) => signalLower.includes(alias));
+      const detHasLeft = leftAliases.some((alias) => detailLower.includes(alias));
+      const detHasRight = rightAliases.some((alias) => detailLower.includes(alias));
       
       return (sigHasLeft || detHasLeft) && (sigHasRight || detHasRight);
     });
 
-    if (matchingPair) {
-      involvedIngredients = [cleanDrugName(matchingPair.left), cleanDrugName(matchingPair.right)];
-    } else {
-      // Fallback to the old logic of finding any matching ingredients from allIngredients
-      allIngredients.forEach((ing) => {
-        const parts = ing.split(/[;,]/).map((p) => p.trim()).filter(Boolean);
-        parts.forEach((part) => {
-          const cleanedPart = cleanDrugName(part);
-          if (!cleanedPart) return;
-          if (signalLower.includes(cleanedPart) || detailLower.includes(cleanedPart)) {
-            if (!involvedIngredients.includes(cleanedPart)) {
-              involvedIngredients.push(cleanedPart);
-            }
-          }
-        });
-      });
-    }
+    const left = matchingPair ? matchingPair.left : finding.left || "";
+    const right = matchingPair ? matchingPair.right : finding.right || "";
+    const leftSource = matchingPair ? matchingPair.leftSource : finding.leftSource || left;
+    const rightSource = matchingPair ? matchingPair.rightSource : finding.rightSource || right;
 
-    if (involvedIngredients.length < 2) {
-      return finding;
-    }
+    const sanitizedEvidence = finding.evidence.map((ev) => {
+      let sourceId = "S1";
+      const srcLower = ev.source.toLowerCase();
+      if (srcLower === "s1" || srcLower.includes("drugs.com")) sourceId = "S1";
+      else if (srcLower === "s2" || srcLower.includes("pubmed")) sourceId = "S2";
+      else if (srcLower === "s3" || srcLower.includes("medscape")) sourceId = "S3";
+      else if (srcLower === "s4" || srcLower.includes("empathia")) sourceId = "S4";
 
-    const nextEvidence = finding.evidence.map((ev) => {
-      const currentUrl = ev.url.trim();
-      const currentSource = ev.source.trim();
-      const currentSourceLower = currentSource.toLowerCase();
-
-      let isVerified = false;
-
-      // 1. Check if it's already in grounding chunks, valid, and not a mismatch
-      const matchingChunk = groundingChunks.find(chunk => {
-        const uri = (chunk.web?.uri || "").trim();
-        return uri.toLowerCase() === currentUrl.toLowerCase();
-      });
-
-      if (matchingChunk) {
-        const uriLower = (matchingChunk.web?.uri || "").toLowerCase();
-        const titleLower = (matchingChunk.web?.title || "").toLowerCase();
-        
-        let isMismatch = false;
-        
-        // Check for other ingredients (cross-contamination)
-        for (const ing of allIngredients) {
-          const cleanedIng = cleanDrugName(ing);
-          if (!cleanedIng) continue;
-          if (involvedIngredients.includes(cleanedIng)) continue;
-          
-          const formattedIng = cleanedIng.replace(/\s+/g, "-");
-          if (uriLower.includes(formattedIng) || titleLower.includes(cleanedIng)) {
-            isMismatch = true;
-            break;
-          }
-        }
-
-        // Check if it actually contains the involved ingredients
-        const missingIng = involvedIngredients.find((ing) => {
-          const formattedIng = ing.replace(/\s+/g, "-");
-          return !uriLower.includes(formattedIng) && !titleLower.includes(ing);
-        });
-        if (missingIng) {
-          isMismatch = true;
-        }
-
-        if (!isMismatch && isUrlValidAndSpecific(currentUrl, currentSource, involvedIngredients)) {
-          isVerified = true;
-        }
-      }
-
-      // 2. If not verified, try to find a better matching chunk in groundingChunks
-      if (!isVerified) {
-        const bestChunk = groundingChunks.find((chunk) => {
-          const uri = (chunk.web?.uri || "").toLowerCase();
-          const title = (chunk.web?.title || "").toLowerCase();
-          
-          let sourceMatches = false;
-          if (currentSourceLower.includes("drugs.com") && uri.includes("drugs.com")) {
-            sourceMatches = true;
-          } else if (currentSourceLower.includes("pubmed") && (uri.includes("pubmed.ncbi") || uri.includes("pmc"))) {
-            sourceMatches = true;
-          } else if (currentSourceLower.includes("medscape") && uri.includes("medscape.com")) {
-            sourceMatches = true;
-          } else if (currentSourceLower.includes("drugbank") && uri.includes("drugbank.com")) {
-            sourceMatches = true;
-          } else if (currentSourceLower.includes("empathia") && uri.includes("empathia.ai")) {
-            sourceMatches = true;
-          }
-          
-          if (!sourceMatches) return false;
-          
-          // Check for involved ingredients
-          const matchesAllIngredients = involvedIngredients.every((ing) => {
-            const formatted = ing.replace(/\s+/g, "-");
-            return uri.includes(formatted) || title.includes(ing);
-          });
-          if (!matchesAllIngredients) return false;
-          
-          // Check for other ingredients
-          let hasOtherIng = false;
-          for (const ing of allIngredients) {
-            const cleanedIng = cleanDrugName(ing);
-            if (!cleanedIng) continue;
-            if (involvedIngredients.includes(cleanedIng)) continue;
-            const formatted = cleanedIng.replace(/\s+/g, "-");
-            if (uri.includes(formatted) || title.includes(cleanedIng)) {
-              hasOtherIng = true;
-              break;
-            }
-          }
-          if (hasOtherIng) return false;
-
-          // Require Drugs.com interaction IDs
-          if (uri.includes("drugs.com/drug-interactions/")) {
-            const hasIds = /-\d+-\d+-\d+-\d+\.html/.test(uri);
-            if (!hasIds) return false;
-          }
-          
-          return true;
-        });
-
-        if (bestChunk?.web?.uri) {
-          console.log(`[URL Correction] Fixed mismatched/hallucinated URL for finding "${finding.signal}":`);
-          console.log(`  Old: ${ev.url}`);
-          console.log(`  New: ${bestChunk.web.uri}`);
-          return {
-            ...ev,
-            url: bestChunk.web.uri,
-            title: bestChunk.web.title || ev.title,
-          };
-        } else {
-          // 3. Fallback: build a drug-specific search URL within the approved source domain.
-          // NEVER use Google, Wikipedia, or any non-approved domain.
-          const drugQuery = involvedIngredients.join(" ") + " interaction";
-          const drug1Slug = involvedIngredients[0]?.replace(/\s+/g, "-") || "";
-          const drug2Slug = involvedIngredients[1]?.replace(/\s+/g, "-") || "";
-          let fallbackUrl: string;
-          let fallbackTitle: string;
-
-          if (currentSourceLower.includes("drugs.com")) {
-            fallbackUrl = `https://www.drugs.com/drug-interactions/${drug1Slug}-with-${drug2Slug}.html`;
-            fallbackTitle = `${involvedIngredients[0]} and ${involvedIngredients[1]} Drug Interactions — Drugs.com`;
-          } else if (currentSourceLower.includes("pubmed")) {
-            fallbackUrl = `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(drugQuery)}`;
-            fallbackTitle = `${involvedIngredients[0]} ${involvedIngredients[1]} interaction — PubMed`;
-          } else if (currentSourceLower.includes("medscape")) {
-            fallbackUrl = `https://reference.medscape.com/drug-interactionchecker`;
-            fallbackTitle = `Drug Interaction Checker — Medscape`;
-          } else if (currentSourceLower.includes("drugbank")) {
-            fallbackUrl = `https://go.drugbank.com/unearth/q?query=${encodeURIComponent(drugQuery)}`;
-            fallbackTitle = `${involvedIngredients[0]} ${involvedIngredients[1]} interaction — DrugBank`;
-          } else if (currentSourceLower.includes("empathia")) {
-            fallbackUrl = `https://empathia.ai/blog/${drug1Slug}-and-${drug2Slug}-drug-interaction`;
-            fallbackTitle = `${involvedIngredients[0]} and ${involvedIngredients[1]} Drug Interaction — Empathia AI`;
-          } else {
-            // Unknown source cited by AI — force to Drugs.com as the default approved fallback
-            fallbackUrl = `https://www.drugs.com/drug-interactions/${drug1Slug}-with-${drug2Slug}.html`;
-            fallbackTitle = `${involvedIngredients[0]} and ${involvedIngredients[1]} Drug Interactions — Drugs.com`;
-          }
-
-          console.log(`[URL Correction] No matching grounding chunk. Using approved fallback for "${finding.signal}": ${fallbackUrl}`);
-          return {
-            ...ev,
-            url: fallbackUrl,
-            title: fallbackTitle,
-          };
-        }
-      }
-
-      return ev;
+      return resolveEvidenceFromSourceId(
+        sourceId,
+        left,
+        right,
+        leftSource,
+        rightSource,
+        groundingChunks,
+        allMedGroups
+      );
     });
 
-    // Final guardrail: reject any URL not from the 5 approved clinical domains.
-    const APPROVED_DOMAINS = ["drugs.com", "pubmed.ncbi.nlm.nih.gov", "medscape.com", "drugbank.com", "empathia.ai"];
-    const sanitizedEvidence = nextEvidence.map((ev) => {
-      const urlLower = ev.url.toLowerCase();
-      const isApproved = APPROVED_DOMAINS.some((domain) => urlLower.includes(domain));
-      if (!isApproved) {
-        // Force unapproved URL to Drugs.com drug-specific interaction page
-        const d1 = involvedIngredients[0]?.replace(/\s+/g, "-") || "drug-a";
-        const d2 = involvedIngredients[1]?.replace(/\s+/g, "-") || "drug-b";
-        console.log(`[URL Guardrail] Rejected unapproved URL "${ev.url}" — replaced with approved Drugs.com link.`);
-        return {
-          ...ev,
-          url: `https://www.drugs.com/drug-interactions/${d1}-with-${d2}.html`,
-          title: `${involvedIngredients[0] || "Drug A"} and ${involvedIngredients[1] || "Drug B"} Drug Interactions — Drugs.com`,
-          source: ev.source || "Drugs.com",
-        };
-      }
-      return ev;
-    });
-
-    return {
+    const result: ReviewFinding = {
       ...finding,
+      left,
+      right,
+      leftSource,
+      rightSource,
       evidence: sanitizedEvidence,
     };
+
+    return result;
   });
 };
 
@@ -751,7 +990,7 @@ const buildFallbackReview = (
         severity: "none",
         signal: "Review service unavailable",
         detail: "The AI agent could not complete the automated drug-drug interaction review at this time.",
-        action: "Please manually review the prescribed medications against the patient's current medications using trusted sources (e.g. DrugBank, PubMed, Medscape, Drugs.com, Empathia AI).",
+        action: "Please manually review the prescribed medications against the patient's current medications using trusted sources (e.g. PubMed, Medscape, Drugs.com, Empathia AI).",
         evidence: [],
       },
     ],
@@ -765,12 +1004,109 @@ Deno.serve(async (request) => {
 
   try {
     const body = await request.json();
+    const mode = String(body?.mode || "review").trim().toLowerCase();
+
+    if (mode === "references") {
+      const pair = body?.pair;
+      if (!pair || !pair.left || !pair.right) {
+        return new Response(JSON.stringify({ error: "pair with left and right fields is required for references mode." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const sampleMaxTwoSources = (sources: string[]): string[] => {
+        if (sources.length <= 2) return sources;
+        const shuffled = [...sources].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, 2);
+      };
+
+      let corrected: ReviewFinding[] = [];
+      try {
+        const result = await callGeminiForDdiReferences({
+          left: String(pair.left),
+          right: String(pair.right),
+          leftSource: String(pair.leftSource || pair.left),
+          rightSource: String(pair.rightSource || pair.right),
+        });
+
+        const parsedSources = Array.isArray(result.parsed?.sources) ? result.parsed.sources : [];
+        const selectedSources = sampleMaxTwoSources(parsedSources);
+        
+        const initialEvidence = selectedSources.map((srcId: string) => ({
+          source: srcId,
+          title: "",
+          url: "",
+        }));
+
+        const tempFinding: ReviewFinding = {
+          type: "Drug-Drug",
+          severity: "high",
+          signal: `${pair.left} and ${pair.right} Interaction`,
+          reasoning: "",
+          detail: "",
+          action: "",
+          evidence: initialEvidence,
+        };
+
+        const allIngredients = [pair.left, pair.right];
+        const pairReviews = [
+          {
+            pairKey: [pair.left, pair.right].sort().join("|"),
+            left: pair.left,
+            right: pair.right,
+            leftSource: pair.leftSource || pair.left,
+            rightSource: pair.rightSource || pair.right,
+            pairType: "proposed-proposed" as const,
+          },
+        ];
+        const proposedMedications = [{ name: pair.leftSource || pair.left, ingredient: pair.left }];
+        const activeMeds = [{ active_ingredient: pair.right, medication_display: pair.rightSource || pair.right }];
+
+        corrected = correctEvidenceUrls(
+          [tempFinding],
+          result.groundingChunks || [],
+          allIngredients,
+          pairReviews,
+          proposedMedications,
+          activeMeds,
+        );
+      } catch (error) {
+        console.warn("Gemini references call failed, falling back to deterministic search URLs:", error);
+        const selected = sampleMaxTwoSources(["S1", "S2", "S3", "S4"]);
+        corrected = [{
+          type: "Drug-Drug",
+          severity: "high",
+          signal: `${pair.left} and ${pair.right} Interaction`,
+          detail: "",
+          action: "",
+          evidence: selected.map(srcId => buildEvidenceUrl(
+            srcId,
+            pair.left,
+            pair.right,
+            pair.leftSource || pair.left,
+            pair.rightSource || pair.right
+          ))
+        }];
+      }
+
+      return new Response(
+        JSON.stringify({
+          evidence: corrected[0].evidence || [],
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const patientCode = String(body?.patientCode || "").trim();
-    const proposedMedications = Array.isArray(body?.proposedMedications)
+    let proposedMedications = Array.isArray(body?.proposedMedications)
       ? (body.proposedMedications as ProposedMedicationInput[]).filter((item) =>
           String(item?.name || item?.ingredient || "").trim()
         )
       : [];
+    proposedMedications = expandProposedMedications(proposedMedications);
 
     if (!patientCode) {
       return new Response(JSON.stringify({ error: "patientCode is required." }), {
@@ -817,10 +1153,11 @@ Deno.serve(async (request) => {
 
     const ehr = ehrData as PatientEhr;
     const ehrSummary = buildEhrSummary(ehr);
-    const activeMeds = ehrSummary.activeMedications.map((item) => ({
+    let activeMeds = ehrSummary.activeMedications.map((item) => ({
       active_ingredient: item.active_ingredient,
       medication_display: item.medication_display || item.active_ingredient,
     }));
+    activeMeds = expandActiveMedications(activeMeds);
     const pairReviews = buildPairReviews(proposedMedications, activeMeds);
 
     let modelReview: { overallSeverity?: string; clinicalSummary?: string; findingsText?: string } | null = null;
@@ -829,7 +1166,7 @@ Deno.serve(async (request) => {
 
     if (pairReviews.length > 0) {
       try {
-        const result = await callGeminiForDdiReview(patientCode, ehrSummary, proposedMedications, pairReviews);
+        const result = await callGeminiForDdiReview(patientCode, ehrSummary, proposedMedications, pairReviews, true);
         modelReview = result.parsed;
         groundingChunks = result.groundingChunks;
       } catch (error) {
@@ -861,7 +1198,7 @@ Deno.serve(async (request) => {
       ...activeMeds.map((item) => fallbackIngredient(item.active_ingredient)),
     ].filter(Boolean);
 
-    const validatedFindings = correctEvidenceUrls(rawFindings, groundingChunks, allIngredients, pairReviews);
+    const validatedFindings = correctEvidenceUrls(rawFindings, groundingChunks, allIngredients, pairReviews, proposedMedications, activeMeds);
 
     // Post-process to add "None" severity findings for checked pairs that have no interactions
     const findings: ReviewFinding[] = [...validatedFindings];
@@ -900,12 +1237,21 @@ Deno.serve(async (request) => {
             signal: `${capitalize(pair.left)} and ${capitalize(pair.right)} Interaction`,
             detail: `The DDI review agent verified the combination of ${pair.left} and ${pair.right} and found no clinically significant drug-drug interactions.`,
             action: "No clinical action required.",
+            left: pair.left,
+            right: pair.right,
+            leftSource: pair.leftSource,
+            rightSource: pair.rightSource,
             evidence: [],
           });
           coveredPairs.add(key);
         }
       });
     }
+
+    // Ensure all findings have empty evidence initially to trigger "Fetch Clinical References" in frontend
+    findings.forEach(f => {
+      f.evidence = [];
+    });
 
     const rawOverallSeverity = String(modelReview?.overallSeverity || fallbackReview.overallSeverity || "none").toLowerCase();
     const overallSeverity = (["none", "low", "medium", "high", "critical"].includes(rawOverallSeverity)
@@ -938,7 +1284,9 @@ Deno.serve(async (request) => {
         interaction_type: "drug_drug",
         severity: finding.severity,
         signal: finding.signal,
-        explanation: finding.detail,
+        explanation: finding.reasoning
+          ? `Medical Reasoning: ${finding.reasoning}\n\nDetail: ${finding.detail}`
+          : finding.detail,
         recommendation: finding.action,
         evidence: finding.evidence || [],
       }));

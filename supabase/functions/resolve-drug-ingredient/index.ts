@@ -122,83 +122,118 @@ const createGoogleAccessToken = async () => {
 /*  Call Gemini 3.5 Flash to resolve a drug name                      */
 /* ------------------------------------------------------------------ */
 
+const parseJsonResponseText = (text: string) => {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error("Model response text was empty.");
+
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  let candidate = fenced?.[1]?.trim() || trimmed;
+
+  if (!candidate.endsWith("}")) {
+    if (!candidate.endsWith('"')) candidate += '"';
+    candidate += "\n}";
+  }
+
+  const firstBrace = candidate.indexOf("{");
+  const lastBrace = candidate.lastIndexOf("}");
+  const objectText =
+    firstBrace >= 0 && lastBrace > firstBrace
+      ? candidate.slice(firstBrace, lastBrace + 1)
+      : candidate;
+  return JSON.parse(objectText);
+};
+
 const resolveWithGemini = async (
   drugName: string,
 ): Promise<Resolution> => {
   const { accessToken, projectId } = await createGoogleAccessToken();
   const endpoint = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-3.5-flash:generateContent`;
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      systemInstruction: {
-        role: "system",
-        parts: [
-          {
-            text: `You are a pharmaceutical drug name resolver. Your job is to identify the active pharmaceutical ingredient (INN/generic name) for any drug input.
+  let response: Response | null = null;
+  let attempt = 0;
+  const maxAttempts = 3;
+  let delayMs = 1500;
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            role: "system",
+            parts: [
+              {
+                text: `You are a pharmaceutical drug name resolver. Your job is to identify the active pharmaceutical ingredient (INN/generic name) for any drug input.
 
 Rules:
 1. If the input is a BRAND NAME (e.g. "Augmentin", "Lipitor", "Clodorel"), return the active ingredient(s) (e.g. "amoxicillin, clavulanic acid", "atorvastatin", "clopidogrel").
 2. If the input is ALREADY an active ingredient / INN / generic name (e.g. "metformin", "clopidogrel"), confirm it as the active ingredient.
-3. If the input is MISSPELLED (e.g. "clopidorel", "amoxicilin", "ibuprofn", "paracetmol"), correct the spelling and return the correct active ingredient.
-4. If the input is a combination product, return all active ingredients separated by commas.
-5. If you truly cannot identify the drug at all, set resolved to false.
-6. Always return ingredient names in lowercase.
-7. For the inputType field: use "brand_name" if the original input was a brand/trade name, "active_ingredient" if it was already a generic/INN name, "misspelled" if it contained a spelling error, or "unknown" if you cannot identify it.
-8. For the correctedInput field: if the input was misspelled, provide the corrected spelling. If it was a brand name, provide the brand name. Otherwise leave it the same as the input.
+3. If the input is a DRUG CLASS or CHEMICAL CLASS (e.g. "sulfonamide", "sulfonamides", "penicillin", "nsaid", "nsaids", "sulfonamides"), resolve it to itself in singular form (e.g. ingredient: "sulfonamide", inputType: "active_ingredient", resolved: true) so allergy/DDI matching can succeed.
+4. If the input is MISSPELLED (e.g. "clopidorel", "amoxicilin", "ibuprofn", "paracetmol"), correct the spelling and return the correct active ingredient.
+5. If the input is a combination product, return all active ingredients separated by commas.
+6. If you truly cannot identify the drug at all, set resolved to false.
+7. Always return ingredient names in lowercase.
+8. For the inputType field: use "brand_name" if the original input was a brand/trade name, "active_ingredient" if it was already a generic/INN name or a drug class, "misspelled" if it contained a spelling error, or "unknown" if you cannot identify it.
+9. For the correctedInput field: if the input was misspelled, provide the corrected spelling. If it was a brand name, provide the brand name. Otherwise leave it the same as the input.
 
-Return strict JSON with these keys: resolved (boolean), ingredient (string - the active ingredient(s) in lowercase), ingredients (array of strings - each individual active ingredient in lowercase), inputType (string - one of "brand_name", "active_ingredient", "misspelled", "unknown"), correctedInput (string), explanation (string - brief explanation of the resolution).`,
+Return strict JSON:
+{
+  "resolved": true,
+  "ingredient": "active ingredient(s)",
+  "ingredients": ["active ingredient"],
+  "inputType": "brand_name | active_ingredient | misspelled | unknown",
+  "correctedInput": "corrected spelling or name",
+  "explanation": "brief explanation"
+}`,
+              },
+            ],
           },
-        ],
-      },
-      contents: [
-        {
-          role: "user",
-          parts: [
+          contents: [
             {
-              text: `Resolve this drug name to its active pharmaceutical ingredient: "${drugName}"`,
+              role: "user",
+              parts: [
+                {
+                  text: `Resolve this drug name to its active pharmaceutical ingredient: "${drugName}"`,
+                },
+              ],
             },
           ],
-        },
-      ],
-      tools: [
-        {
-          google_search: {},
-        },
-      ],
-      generationConfig: {
-        temperature: 0.05,
-        maxOutputTokens: 2048,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            resolved: { type: "BOOLEAN" },
-            ingredient: { type: "STRING" },
-            ingredients: {
-              type: "ARRAY",
-              items: { type: "STRING" },
+          tools: [
+            {
+              google_search: {},
             },
-            inputType: { type: "STRING" },
-            correctedInput: { type: "STRING" },
-            explanation: { type: "STRING" },
+          ],
+          generationConfig: {
+            temperature: 0.05,
+            maxOutputTokens: 2048,
           },
-          required: [
-            "resolved",
-            "ingredient",
-            "ingredients",
-            "inputType",
-            "correctedInput",
-            "explanation",
-          ],
-        },
-      },
-    }),
-  });
+        }),
+      });
+
+      if (response.status === 429) {
+        console.warn(`Gemini API returned 429 (Resource Exhausted) on attempt ${attempt}. Retrying in ${delayMs}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        delayMs *= 2;
+        continue;
+      }
+
+      break; // Success or non-429 error
+    } catch (fetchErr) {
+      console.warn(`Fetch error on attempt ${attempt}:`, fetchErr);
+      if (attempt >= maxAttempts) throw fetchErr;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      delayMs *= 2;
+    }
+  }
+
+  if (!response) {
+    throw new Error("Failed to receive response from Gemini.");
+  }
 
   if (!response.ok) {
     const detail = await response.text();
@@ -216,52 +251,57 @@ Return strict JSON with these keys: resolved (boolean), ingredient (string - the
     throw new Error(`Gemini returned an empty response. Raw data: ${JSON.stringify(data)}`);
   }
 
-  const parsed = JSON.parse(text.trim());
+  try {
+    const parsed = parseJsonResponseText(text);
 
-  if (!parsed.resolved || !parsed.ingredient) {
+    if (!parsed.resolved || !parsed.ingredient) {
+      return {
+        ingredient: "",
+        ingredients: [],
+        status: "unconfirmed",
+        source: "Gemini 3.5 Flash",
+        note: parsed.explanation ||
+          `Could not resolve "${drugName}" to a known active ingredient.`,
+      };
+    }
+
+    const ingredients: string[] = Array.isArray(parsed.ingredients)
+      ? parsed.ingredients.map((i: string) => i.trim().toLowerCase()).filter(Boolean)
+      : [parsed.ingredient.trim().toLowerCase()];
+
+    const ingredientDisplay = parsed.ingredient.trim().toLowerCase();
+    const inputType: string = parsed.inputType || "unknown";
+    const correctedInput: string = parsed.correctedInput || drugName;
+
+    let status: Resolution["status"];
+    let note: string;
+
+    if (inputType === "active_ingredient") {
+      status = "ingredient";
+      note = `"${drugName}" is already a known active ingredient or class.`;
+    } else if (inputType === "misspelled") {
+      status = "resolved";
+      note = `Corrected "${drugName}" to "${correctedInput}". Active ingredient: ${ingredientDisplay}.`;
+    } else if (inputType === "brand_name") {
+      status = "resolved";
+      note = `Resolved brand name "${drugName}" to active ingredient: ${ingredientDisplay}.`;
+    } else {
+      status = "resolved";
+      note = parsed.explanation ||
+        `Resolved "${drugName}" to ${ingredientDisplay}.`;
+    }
+
     return {
-      ingredient: "",
-      ingredients: [],
-      status: "unconfirmed",
+      ingredient: ingredientDisplay,
+      ingredients,
+      status,
       source: "Gemini 3.5 Flash",
-      note: parsed.explanation ||
-        `Could not resolve "${drugName}" to a known active ingredient.`,
+      note,
     };
+  } catch (parseError) {
+    console.error("Failed to parse Gemini response. Raw text:", text);
+    throw new Error(`JSON parse failure: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
   }
-
-  const ingredients: string[] = Array.isArray(parsed.ingredients)
-    ? parsed.ingredients.map((i: string) => i.trim().toLowerCase()).filter(Boolean)
-    : [parsed.ingredient.trim().toLowerCase()];
-
-  const ingredientDisplay = parsed.ingredient.trim().toLowerCase();
-  const inputType: string = parsed.inputType || "unknown";
-  const correctedInput: string = parsed.correctedInput || drugName;
-
-  let status: Resolution["status"];
-  let note: string;
-
-  if (inputType === "active_ingredient") {
-    status = "ingredient";
-    note = `"${drugName}" is already a known active ingredient.`;
-  } else if (inputType === "misspelled") {
-    status = "resolved";
-    note = `Corrected "${drugName}" to "${correctedInput}". Active ingredient: ${ingredientDisplay}.`;
-  } else if (inputType === "brand_name") {
-    status = "resolved";
-    note = `Resolved brand name "${drugName}" to active ingredient: ${ingredientDisplay}.`;
-  } else {
-    status = "resolved";
-    note = parsed.explanation ||
-      `Resolved "${drugName}" to ${ingredientDisplay}.`;
-  }
-
-  return {
-    ingredient: ingredientDisplay,
-    ingredients,
-    status,
-    source: "Gemini 3.5 Flash",
-    note,
-  };
 };
 
 /* ------------------------------------------------------------------ */

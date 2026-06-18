@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050">
+  <defs>
+    <style>
+      .bg { fill: #f6faf8; }
+      .title { font: 800 34px Arial, Helvetica, sans-serif; fill: #10231f; }
+      .subtitle { font: 500 18px Arial, Helvetica, sans-serif; fill: #63756f; }
+      .box { fill: #ffffff; stroke: #d8e6e1; stroke-width: 3; rx: 18; }
+      .box-teal { fill: #e3f5ef; stroke: #0f8b7b; stroke-width: 3; rx: 18; }
+      .box-blue { fill: #e8f1fb; stroke: #225ea8; stroke-width: 3; rx: 18; }
+      .box-amber { fill: #fff5da; stroke: #b7791f; stroke-width: 3; rx: 18; }
+      .box-red { fill: #ffe9e5; stroke: #b42318; stroke-width: 3; rx: 18; }
+      .label { font: 800 20px Arial, Helvetica, sans-serif; fill: #10231f; }
+      .small { font: 500 15px Arial, Helvetica, sans-serif; fill: #334640; }
+      .tiny { font: 500 13px Arial, Helvetica, sans-serif; fill: #63756f; }
+      .lane { fill: none; stroke: #d8e6e1; stroke-width: 2; stroke-dasharray: 8 8; rx: 24; }
+      .lane-label { font: 800 15px Arial, Helvetica, sans-serif; fill: #63756f; letter-spacing: .6px; }
+      .arrow { stroke: #31524a; stroke-width: 3; fill: none; marker-end: url(#arrowhead); }
+      .arrow-soft { stroke: #63756f; stroke-width: 2.5; fill: none; marker-end: url(#arrowheadSoft); stroke-dasharray: 7 7; }
+      .badge { fill: #0f8b7b; }
+      .badgeText { font: 800 16px Arial, Helvetica, sans-serif; fill: #ffffff; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#31524a"/>
+    </marker>
+    <marker id="arrowheadSoft" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#63756f"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="1050"/>
+
+  <text class="title" x="80" y="70">Prescription Safety Review Pipeline</text>
+  <text class="subtitle" x="80" y="102">Autonomous Clinical Workflow Agent for Drug Interaction Review</text>
+
+  <rect class="lane" x="55" y="135" width="365" height="805"/>
+  <text class="lane-label" x="82" y="166">PRESENTATION LAYER</text>
+
+  <rect class="lane" x="455" y="135" width="430" height="805"/>
+  <text class="lane-label" x="482" y="166">SUPABASE DATA AND PREPROCESSING</text>
+
+  <rect class="lane" x="920" y="135" width="405" height="805"/>
+  <text class="lane-label" x="947" y="166">AUTONOMOUS REVIEW AGENTS</text>
+
+  <rect class="lane" x="1360" y="135" width="185" height="805"/>
+  <text class="lane-label" x="1385" y="166">OUTPUT</text>
+
+  <!-- Presentation layer -->
+  <rect class="box-teal" x="90" y="205" width="290" height="95"/>
+  <circle class="badge" cx="125" cy="238" r="18"/>
+  <text class="badgeText" x="120" y="244">1</text>
+  <text class="label" x="155" y="238">Patient Lookup</text>
+  <text class="small" x="115" y="268">Search with de-identified code</text>
+  <text class="tiny" x="115" y="288">Example: EHR-PT-0001</text>
+
+  <rect class="box" x="90" y="365" width="290" height="105"/>
+  <circle class="badge" cx="125" cy="398" r="18"/>
+  <text class="badgeText" x="120" y="404">2</text>
+  <text class="label" x="155" y="398">Prescription Entry</text>
+  <text class="small" x="115" y="428">Enter drug, dose, route,</text>
+  <text class="small" x="115" y="450">unit, and frequency</text>
+
+  <rect class="box" x="90" y="700" width="290" height="110"/>
+  <circle class="badge" cx="125" cy="733" r="18"/>
+  <text class="badgeText" x="120" y="739">9</text>
+  <text class="label" x="155" y="733">Clinician Review</text>
+  <text class="small" x="115" y="763">View findings, severity,</text>
+  <text class="small" x="115" y="785">reasoning, and action</text>
+
+  <!-- Supabase data/preprocessing -->
+  <rect class="box-blue" x="505" y="205" width="330" height="105"/>
+  <circle class="badge" cx="540" cy="238" r="18"/>
+  <text class="badgeText" x="535" y="244">3</text>
+  <text class="label" x="570" y="238">Fetch EHR Context</text>
+  <text class="small" x="530" y="268">get_patient_ehr RPC retrieves</text>
+  <text class="small" x="530" y="290">meds, allergies, diseases, labs</text>
+
+  <rect class="box-blue" x="505" y="365" width="330" height="105"/>
+  <circle class="badge" cx="540" cy="398" r="18"/>
+  <text class="badgeText" x="535" y="404">4</text>
+  <text class="label" x="570" y="398">Resolve Ingredients</text>
+  <text class="small" x="530" y="428">Brand names and misspellings</text>
+  <text class="small" x="530" y="450">become active ingredients</text>
+
+  <rect class="box-blue" x="505" y="525" width="330" height="120"/>
+  <circle class="badge" cx="540" cy="558" r="18"/>
+  <text class="badgeText" x="535" y="564">5</text>
+  <text class="label" x="570" y="558">Pairing Algorithm</text>
+  <text class="small" x="530" y="588">Build proposed-current,</text>
+  <text class="small" x="530" y="610">proposed-allergy, and</text>
+  <text class="small" x="530" y="632">proposed-disease/lab pairs</text>
+
+  <rect class="box-blue" x="505" y="700" width="330" height="110"/>
+  <circle class="badge" cx="540" cy="733" r="18"/>
+  <text class="badgeText" x="535" y="739">8</text>
+  <text class="label" x="570" y="733">Persist Review</text>
+  <text class="small" x="530" y="763">Save review sessions and</text>
+  <text class="small" x="530" y="785">interaction findings</text>
+
+  <!-- Agent layer -->
+  <rect class="box-amber" x="965" y="205" width="315" height="100"/>
+  <circle class="badge" cx="1000" cy="238" r="18"/>
+  <text class="badgeText" x="995" y="244">6</text>
+  <text class="label" x="1030" y="238">DDI Agent</text>
+  <text class="small" x="990" y="268">Proposed drugs vs current</text>
+  <text class="small" x="990" y="288">active medications</text>
+
+  <rect class="box-amber" x="965" y="345" width="315" height="100"/>
+  <text class="label" x="1030" y="380">Allergy Agent</text>
+  <text class="small" x="990" y="410">Proposed drugs vs current</text>
+  <text class="small" x="990" y="430">documented allergies</text>
+
+  <rect class="box-amber" x="965" y="485" width="315" height="110"/>
+  <text class="label" x="1030" y="520">Disease/Lab Agent</text>
+  <text class="small" x="990" y="550">Proposed drugs vs diseases,</text>
+  <text class="small" x="990" y="572">labs, vitals, and notes</text>
+
+  <rect class="box-red" x="965" y="665" width="315" height="130"/>
+  <circle class="badge" cx="1000" cy="698" r="18"/>
+  <text class="badgeText" x="995" y="704">7</text>
+  <text class="label" x="1030" y="698">Grounded Review</text>
+  <text class="small" x="990" y="728">Gemini 3.5 Flash with</text>
+  <text class="small" x="990" y="750">restricted source grounding:</text>
+  <text class="tiny" x="990" y="775">PubMed, Drugs.com, Medscape, Empathia AI</text>
+
+  <!-- Output -->
+  <rect class="box-teal" x="1390" y="310" width="125" height="150"/>
+  <text class="label" x="1412" y="350">Safety</text>
+  <text class="label" x="1412" y="378">Findings</text>
+  <text class="tiny" x="1412" y="410">Severity</text>
+  <text class="tiny" x="1412" y="432">Reasoning</text>
+  <text class="tiny" x="1412" y="454">Action</text>
+
+  <rect class="box-teal" x="1390" y="590" width="125" height="150"/>
+  <text class="label" x="1412" y="630">Saved</text>
+  <text class="label" x="1412" y="658">Report</text>
+  <text class="tiny" x="1412" y="690">Session</text>
+  <text class="tiny" x="1412" y="712">Findings</text>
+  <text class="tiny" x="1412" y="734">Evidence</text>
+
+  <!-- Arrows main path -->
+  <path class="arrow" d="M380 252 C430 252 455 252 505 252"/>
+  <path class="arrow" d="M670 310 L670 365"/>
+  <path class="arrow" d="M380 417 C430 417 455 417 505 417"/>
+  <path class="arrow" d="M670 470 L670 525"/>
+  <path class="arrow" d="M835 585 C890 585 910 420 965 255"/>
+  <path class="arrow" d="M835 585 C900 585 915 395 965 395"/>
+  <path class="arrow" d="M835 585 C900 585 915 540 965 540"/>
+  <path class="arrow" d="M1122 595 L1122 665"/>
+  <path class="arrow" d="M1280 730 C1340 730 1350 665 1390 665"/>
+  <path class="arrow" d="M1390 665 C1320 665 910 755 835 755"/>
+  <path class="arrow" d="M505 755 C455 755 430 755 380 755"/>
+  <path class="arrow" d="M1280 385 C1335 385 1350 385 1390 385"/>
+
+  <!-- Soft supporting arrows -->
+  <path class="arrow-soft" d="M235 470 L235 700"/>
+  <path class="arrow-soft" d="M1122 305 L1122 345"/>
+  <path class="arrow-soft" d="M1122 445 L1122 485"/>
+
+  <!-- Footer notes -->
+  <rect class="box" x="90" y="880" width="1425" height="70"/>
+  <text class="small" x="120" y="912">Methodological purpose: reduce alert fatigue by transforming raw prescription entry into patient-specific, source-grounded, explainable medication safety findings.</text>
+  <text class="tiny" x="120" y="937">The final prescribing decision remains with the clinician; the system functions as decision support only.</text>
+</svg>

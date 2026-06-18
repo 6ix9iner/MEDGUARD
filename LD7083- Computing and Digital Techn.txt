@@ -1,0 +1,263 @@
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 1
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 2
+Methodology
+3.1 Research Context
+The early prediction and intervention is very important as diabetes is on the global increase. Being a major metabolic syndrome, it may affect the life of a huge population and result in various big hazards such as cardiovascular disorders, neuropathy, retinopathy, and kidney problems among individuals if not managed appropriately. It is, therefore, very necessary that effective ways of predicting the risk of diabetes, with increased incidence rates, especially in developing countries, where the healthcare resources are at a premium.
+Predictive analytics based on machine learning in health is what this research work seeks to discuss. Huge volumes of data can train a model that identifies those at high risk from a certain disease long before symptoms show up, so that timely interventions can take place to reduce costs and improve patient outcomes. Some of the prediction models gained huge momentum in the health sectors these days, but effective diabetes prediction models are hard to develop.
+Emerging healthcare technology faces burgeoning burdens of disease, besides restricted resources, within the developing world. Cost-effectiveness and data-driven strategies toward those at risk in these contexts can transform the management and prevention of diabetes. Lastly, the main limitations of the present study regarding the classical assessment of risk also involve the use of machine learning techniques that enhance predictive accuracy and scalability by a broad margin.
+Recently, larger datasets dealing with diabetes have been made available, and accordingly, improvements have been achieved in machine learning algorithms and their applications for clinical decision-making. Various machine learning models will be reviewed and compared for their performance regarding predicting the risk of diabetes that would involve both personalized medicine and public health interventions.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 3
+3.2 Methodology Definition
+In order to improve the accuracy of the model, the dataset underwent various enhancements in the form of data preprocessing that included the following techniques:
+Data Cleaning: The dataset was checked for any imbalanced or missing values. The missing values were either filled with the mean or median imputation and in certain scenarios, the records with missing values were discarded to preserve the integrity of the remaining data.
+Feature Extraction: Some features were examined in detail as to their usefulness in the prediction of diabetes. For example the diabetic pedigree function is a measure of a person’s family history, which can be an important risk factor. To ameliorate the model’s ability to exploit age differentials, some additional features like stratification by age groups were also introduced into the dataset.
+Scaling: Glucose, blood pressure, BMI, insulin and similar continuous features were all scaled to achieve a specific range. This was to enhance the performance of the model and to avoid cases where features with large numerical values overloaded the learning process.
+Feature Selection: A scrutiny of the features present in the dataset was conducted as regards their importance using correlation coefficients and feature importance scores from basic predictive learning. This assisted in limiting the frequency of distractions and enabled the model to concentrate on those variables that pose the greatest diabetes risk.
+Data Augmentation: SMOTE(Synthetic Minority Over-sampling Technique) technique was used to correct class imbalance. This method of augmentation prevents the model from being skewed towards the majority class (cases of no diabetes).
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 4
+Figure 1 FLOWCHART
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 5
+Using these data collection and preprocessing techniques, the dataset was ready for use to enhance model’s accuracy, reliability, and generalizability, ensuring that the machine learning models could effectively learn patterns indicative of diabetes risk.
+3.3 Pima indian dataset
+The Pima Indians Diabetes Dataset is among the popular datasets in machine learning and has been used previously for classification problems, especially in diabetes. It consists of 768 examples, 8 attributes, and a binary target variable representing the presence or absence of diabetes (1 or 0). Based on the female Pima Indian patients aged 21 and over, it gives valuably iterated insights about diabetes risk factors but rather with limited generalization. It includes important features such as the number of pregnancies, glucose levels, blood pressure, BMI, and the Diabetes Pedigree Function, which indicates genetic risk.
+This dataset was picked because its structure requires less preprocessing and would easily allow investigations of physiological variables, genetic variables, and lifestyle variables associated with the prediction of diabetes. Being a standard dataset, it allows model comparisons to be effectively done in machine learning, hence pointing out a very high prevalence of diabetes among Pima Indians for the identification of people at risk. It contains a mix of medical, demographic, and clinical information, hence being imperative for predictive healthcare and research on interventions.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 6
+3.4 Comparison Analysis
+In this section, the results of this study are compared to existing studies and established models in diabetes prediction. A comparative method provides a perspective on the current study in relation to past investigations, with reflections on trends, patterns and major findings in diabetes risk prediction by machine learning models.
+3.4.1 Comparison with Prior Studies or Models
+1.
+Comparison with Related Work: The classic machine learning models utilized in this study such as Logistic Regression, Random Forest are reported extensively employed for predicting diabetes in previous research. As demonstrated in previous studies (Abdulqadir et al., 2021), the generalized random-forest models are also capable of yielding high prediction accuracies for diabetes-related phenotypes drawing on the feature-rich aspects of health data (Karimah et al., 2021). This study's results are consistent with these findings, particularly regarding the performance of Random Forest, which was identified as one of the most accurate classifiers for diabetes prediction.
+2.
+Novelty in Comparison to Existing Process Models: In hindsight of other existing research works which use traditional statistical methods or single machine learning algorithms, our study adopts a comparative machine-learning approach with emphasis on model evaluation and optimization. This study not only focuses on accuracy as an evaluation measure, which previous studies have done as well, but also looks at other measures, such as precision, recall and F1 score. Studies utilizing accuracy as the sole indicator of model performance may have failed to report a more nuanced interpretation 103,105; in particular imbalanced data exists in diabetes prediction but may not appear directly on documented risk measures.
+3.
+Performance Gains and New Insights: This study employed preprocessing methods such as data normalization and feature selection that resulted in quantifiable, performance enhancements over previous models not using these techniques.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 7
+Moreover, achieving a more balanced dataset using techniques like SMOTE or similar data augmentation approaches has enabled this work to yield consistent predictions when compared to others, aligning with recent best practices in the field.
+3.4.2 Insight into Trends or Patterns
+1.
+Pattern and Correlation: The data shows some trends which look to be the same on more than one occasion. As an example, positive diabetes outcomes are strongly correlated with increased glucose and increased BMI, consistent with medical knowledge about factors of diabetes (which we obviously know). The correlational nature of these findings reached statistical significance not only in this study but also in other studies thus establishing the integral role of these parameters as significant predictors in models exploring the risk of diabetes.
+Figure 2 CODE TO GENERATE CORRELATION HEAT MAP
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 8
+Figure 3 FEATURE CORRELATION HEAT MAP
+2.
+Findings That Were Not Expected: One surprising finding was that, when checking for feature importance, age was as meaningful a predictor of as it’s thought to be. While age is widely believed to be a major risk factor for diabetes, this was not observed with significance in our dataset. That's different from some past studies in which age was a stronger predictor, perhaps because younger or older people weren't as well represented in the Pima.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 9
+Figure 4 CODE TO PLOT AND ANALYZE FEATURE IMPORTANCE FOR LOGISTIC REGRESSION
+Figure 5 FEATURE IMPORTANCE (LOGISTIC REGRESSION)
+3.
+Patterns in feature importance: The analysis of feature importance showed that Glucose and BMI continuously come to the top three indicators across the different models, Glucose level being the most important for all models. Clinical data supports
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 10
+this, and highlights the utility of these variables in predicting risk for diabetes. These variables were consistently present in the various models, indicating their robustness as markers of diabetes and thus future multi-marker risk prediction models might be more efficient by covering only a small number of highly predictive features. Here is a graph for random forest.
+Figure 6 CODE TO PLOT AND ANALYZE FEATURE IMPORTANCE OF RANDOM FOREST
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 11
+Figure 7 FEATURE IMPORTANCE (RANDOM FOREST)
+This research provides several key findings that add value to the existing knowledge surrounding diabetes prediction through comparison with previous studies and trend analysis of readings. It points out aspects where there is room for improvement such as testing for supplementary features or larger datasets, while also recognizing stable predictors that could be used in future applications.
+3.5 Data Preprocessing
+Data preprocessing is among the major preparatory steps for any dataset that has to be used in training machine learning models. It makes the data clean, consistent, and ready for quality, accurate predictions. Below, find discussions on handling missing values, scaling and normalization of features, transformation of data where necessary, and splitting of data into the training, validation, and testing sets for reproducibility.
+1.
+Handling Missing Data
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 12
+While the features are rich in the Pima Indian Diabetes dataset for predicting diabetes, some entries are missing or zero-valued. The problems existing within the dataset have been treated thoroughly.
+Imputation: Median imputation was performed for entries that were either missing or had zero values for features highly critical in being a predictor for diabetes. For instance, glucose level or Body Mass Index; the median for every feature was calculated and missing values replaced as it is less prone to outliers compared to the mean.
+Figure 8 CODE TO LOAD DATASET AND HANDLE MISSING DATA
+2.
+Feature Scaling
+The continuous features are Min-Max scaled between 0 and 1. That transformation reduces the effect of big-sized features and normalizes all features to a standard range; this is quite important in distance-based algorithms, such as k-nearest neighbors among others, and models sensitive to feature magnitude.
+Figure 9 CODE TO HANDLE SCALING
+3. Data Augmentation
+SMOTE addresses class imbalance by generating synthetic samples of the minority class, improving model learning from underrepresented classes. It was applied to the training set to ensure both classes are represented by interpolating between existing minority class instances, creating new samples to enhance diversity and improve model performance.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 13
+Figure 10 CODE TO HANDLE CLASS IMBALANCE USING SMOTE
+4. Data Splitting
+To create a robust and generalizable model, the dataset was divided into three subsets: training, validation, and testing. This ensures that the model is exposed to different data distributions during training and evaluation, supporting a comprehensive assessment of its performance:
+●
+Training Set: 70% of the dataset was used for model training. This subset allowed the model to learn the patterns and the relationships between input features and diabetes outcomes.
+●
+Validation Set: 15% of the dataset was kept for model validation. During the model
+training, this subset provided an unbiased estimate of model performance that helped in fine-tuning hyper-parameters and avoided overfitting.
+●
+Testing Set: 15% of the dataset was solely used in the final model evaluation. This set had an objective estimate of the model performance on unseen data. In this way, the true predictive performance in real-world scenarios could be reliably estimated.
+Figure 11 CODE TO SPLIT DATA WITH STRATIFICATION
+The random seed was utilized to realize this split so that other researchers can perform this research and come up with similar findings. Training, validation and testing sets were stratified by the target variable since the class distribution is imbalanced. In this way, each subset will preserve the class distribution of the original dataset.
+5. Summary of Preprocessing Steps
+The following is a summary of the preprocessing steps performed:
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 14
+Following is the summary of the preprocessing steps performed: 1. Handling Missing Data: imputed missing values and removed highly incomplete records. 2. Scaling: The range of all the continuous features was normalized between 0–1 using Min-Max Scaling. 3. Data augmentation: helps the model to grasp the decision boundary about the minority class, thus making its prediction more reliable. 4. Data Split: The dataset was split into 70% training, 15% validation, and 15% test sets using stratified sampling. These preprocessing steps have been applied to the dataset to make it more machine learning-ready, and thus allow the model to learn efficiently from the data-reducing bias that could have been introduced by the missing values, variability of feature magnitude, and balance of classes. Thus, this rigorous preprocessing pipeline furthers the reproducibility and robustness of the research carried out and lays very good ground for the development of an accurate model capable of predicting diabetes.
+3.6 Data Analysis Techniques
+Different machine learning techniques and methods were used in the construction of diabetes risk predictive models. Each technique has been picked based on its distinguishing character and its receptiveness to the binary classification problem with an aim to come up with a suitable model that can best suit the given dataset. The comparative analysis framework consisted of a number of evaluative aspects which were all essential for understanding the efficiency of every model such as accuracy, precision, recall and F1 score.
+Here is the list of the algorithms employed and the evaluation approach and metrics used.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 15
+3.6.1 Comparative Analysis Framework
+To determine the most effective model, a comparative analysis was performed using several performance metrics. Each model’s strengths and weaknesses were evaluated to identify the one that best fits the context of diabetes prediction.
+These metrics were used to evaluate each model:
+●
+Accuracy: Measures the proportion of correctly classified instances among all instances while accuracy is a straightforward metric. It can be misleading in cases of class imbalance, as it does not distinguish between false positives and false negatives.
+Nonetheless, it provides a general overview of model performance.
+𝐴𝑐𝑐𝑢𝑟𝑎𝑐𝑦=𝑇𝑟𝑢𝑒 𝑃𝑜𝑠𝑖𝑡𝑖𝑣𝑒𝑠+𝑇𝑟𝑢𝑒 𝑁𝑒𝑔𝑎𝑡𝑖𝑣𝑒𝑠𝑇𝑜𝑡𝑎𝑙 𝐼𝑛𝑠𝑡𝑎𝑛𝑐𝑒𝑠
+Equation 1 TO CALCULATE ACCURACY
+●
+Precision: This shows the proportion of true positive predictions among all positive predictions (true positives and false positives). This is important when the cost of false positives is high. In diabetes prediction context, an increased precision shows that model is accurately identifying individuals at risk, with fewer false positives.
+𝑃𝑟𝑒𝑐𝑖𝑠𝑖𝑜𝑛 = 𝑇𝑟𝑢𝑒 𝑃𝑜𝑠𝑖𝑡𝑖𝑣𝑒 𝑇𝑟𝑢𝑒 𝑃𝑜𝑠𝑖𝑡𝑖𝑣𝑒 + 𝐹𝑎𝑙𝑠𝑒 𝑃𝑜𝑠𝑖𝑡𝑖𝑣𝑒
+Equation 2 TO CALCULATE PRECISION
+●
+Recall (Sensitivity): represents the share of true positive predictions of all actual positives, or the sum of true positives and false negatives. Therefore, it is helpful when false negatives are extremely high. High recall, therefore, ensures the highest proportion of risks are being appropriately identified. This reduces under-classifying the people with the highest degree of risk.
+𝑅𝑒𝑐𝑎𝑙𝑙 = 𝑇𝑟𝑢𝑒 𝑃𝑜𝑠𝑖𝑡𝑖𝑣𝑒 𝑇𝑟𝑢𝑒 𝑃𝑜𝑠𝑖𝑡𝑖𝑣𝑒 + 𝐹𝑎𝑙𝑠𝑒 𝑁𝑒𝑔𝑎𝑡𝑖𝑣𝑒
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 16
+Equation 3 TO CALCULATE RECALL
+●
+F1 Score: is the harmonic mean for precision and recall. It leads to a well-rounded measure mainly because it will involve both the false positives and false negatives, especially within the unevenly distributed classed dataset. As such, one can look out for a high F1 value so that a final model could demonstrate excellent precision, recall, and could therefore be ideal while assessing the imbalanced datasets.
+𝐹1 𝑆𝑐𝑜𝑟𝑒 = 2 ∗ 𝑃𝑟𝑒𝑠𝑖𝑜𝑛 ∗ 𝑅𝑒𝑐𝑎𝑙𝑙𝑃𝑟𝑒𝑐𝑖𝑠𝑖𝑜𝑛 + 𝑅𝑒𝑐𝑎𝑙𝑙
+Equation 3 TO CALCULATE F1 SCORE
+3.6.2 Model Evaluation Metrics in Healthcare Decision-Making
+One step was towards finding the best model in predicting diabetes by creating a comparative analysis through using different measures of performance against different strengths and weaknesses towards decisions in healthcare.
+Accuracy It provides the portion of correctly classified instances out of total instances; hence, it provides an overall idea about the performance of the model. This might lead to deception because of class imbalance; it is also not capable of differentiating between false positives and false negatives.
+Precision It is the proportion of the number of true positives against the total number of positive predictions. It is highly relevant in the context that the cost of false positives is high such as misidentifying somebody as being at risk. High precision means model correctly show those at risk minimizing anxiety and health costs related to false alarms.
+Recall (or Sensitivity) It is defined as the ratio of true positives to the sum of true positives and false negatives. It is an important metric for any case in which the cost of missing positives is high. Failure in identifying people at risk for diabetes might prove disastrous; it will mean that the majority of those needing intervention had been identified while minimizing the number of people who will go untraced though actually at risk.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 17
+The F1 Score is the harmonic mean of precision and recall, yielding a well-balanced measure that is particularly useful in datasets with class imbalance. An F1 score that is higher corresponds to better model performance in terms of precision and recall, serving very well for performance evaluation from the point of view of both medical and administrative considerations when both the negative and positive statuses are crucial to patient care.
+Tuning into the ways these metrics drive healthcare decisions, especially trade-offs between precision and recall can turn stakeholders into wiser decision-makers regarding which models to put to use, with the goal of improving patient outcomes.
+3.6.3 Evaluation and Comparison
+Each of the models was assessed for the above-mentioned metrics on both the validation and test sets. Thereafter, test results were compared in order to deduce which of the models best predicted diabetes. Also, tables were shown in order to compare the results among these models, showing clearly the contrasts among them in terms of accuracy, precision, recall, and F1 score. This showed which of these models gives the optimal balance between sensitivity or Specificity, which is especially important for healthcare applications sensitive to both false positives and negatives.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 18
+Figure 12 CODE TO EVALUATE MODEL ON TEST SET AND DISPLAY RESULTS
+By implementing these machine learning algorithms and evaluation techniques, the study was able to comprehensively compare each model’s effectiveness for predicting diabetes risk. This approach not only identified the best-performing model but also highlighted the trade-offs between different metrics, providing a well-rounded view of each model’s strengths and weaknesses in a medical prediction context. This comprehensive analysis lays a foundation for selecting the optimal model for real-world diabetes prediction and suggests potential areas for further improvement and refinement.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 19
+3.7 Tools and Materials
+To develop, train, and evaluate the machine learning models for diabetes prediction, a range of software, libraries, and hardware resources were utilized. This section details the tools and materials that were integral to the project.
+1. Software and Libraries
+●
+Python: Python was the primary language for doing data analysis, preprocessing, model building, and evaluation. It is a very flexible language; therefore, it could serve any machine learning application with the vast number of libraries available. To be more specific, this project was executed in Python 3.
+●
+Google Colab: This is utilized to provide an interactive environment during the coding, testing, and visualization of results. It was very helpful in testing different preprocessing techniques and model configurations in an orderly, iterative way. The major advantage of its use is that it also comes with free GPU and TPU. It enables faster training of complex models, most especially neural networks.
+●
+Scikit-Learn (sklearn): Scikit-Learn is the most popular library in Python for machine learning. It was used to implement most of the algorithms utilized, such as the Logistic Regression and Random Forest. Indeed, it also includes means for data preprocessing and splitting, and performance evaluation.
+○
+Preprocessing: StandardScaler for feature scaling.
+○ Data Splitting: train_test_split for creating training, validation, and testing sets.
+○ Model Selection: GridSearchCV for hyperparameter tuning.
+○ Evaluation Metrics: accuracy_score, confusion_matrix, classification_report, f1_score.
+●
+TensorFlow and Keras: To realize even more complicated algorithms, it was necessary to use TensorFlow, among other things, with its high-level API Keras for the realization of GBM and neural networks. The scalability of TensorFlow allowed dealing with big datasets and more heavy computation.
+○
+Neural Network Model: ■ Model: Sequential model Layers:
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 20
+■ Dense(64, activation='relu') (Input Layer)
+■ Dropout(0.5)
+■ Dense(32, activation='relu')
+■ Dropout(0.3)
+■ Dense(16, activation='relu')
+■ Dense(1, activation='sigmoid') (Output Layer)
+■
+■ Optimizer: adam
+■ Loss Function: binary_crossentropy
+■ Metrics: accuracy ■ Training:
+■ Early Stopping: EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+■ Epochs: 100 ■ Batch Size: 64
+●
+XGBoost:
+○ Model: XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+○ Hyperparameter Grid:
+■ n_estimators: [50, 100, 200]
+■ learning_rate: [0.01, 0.1, 0.2]
+■ max_depth: [3, 5, 7]
+■ min_child_weight: [1, 5, 10]
+■ gamma: [0, 0.1, 0.2]
+■ subsample: [0.8, 1.0]
+■ colsample_bytree: [0.8, 1.0]
+○ Cross-Validation: StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+○ Evaluation Metrics: accuracy, confusion matrix, classification report
+●
+Pandas: Pandas was used for data manipulation, allowing efficient handling of datasets, cleaning, and preprocessing steps. The library provided various functions to
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 21
+handle missing data (e.g., fillna), perform feature engineering, and explore dataset properties.
+●
+NumPy: NumPy, a fundamental library for numerical computation, was used for handling arrays and performing mathematical operations on the data, making it a core part of the data preprocessing and feature transformation steps.
+●
+Matplotlib and Seaborn: For data visualization, Matplotlib and Seaborn libraries were used to create plots, graphs, and charts, facilitating exploratory data analysis and model performance visualization. The code includes examples of plotting feature importance and correlation heatmaps.
+●
+Imbalanced-learn: Specifically, the SMOTE (Synthetic Minority Over-sampling Technique) class from imblearn.over_sampling was used to address class imbalance in the training data.
+●
+Hardware
+○
+Google Colab was used so the models were trained using the GPU resources provided by Colab which significantly accelerated the training process, especially for the neural network model.
+●
+Model Settings and Hyperparameters
+○
+Logistic Regression:
+○ max_iter=1000
+○
+Random Forest:
+○ n_estimators: 100, 200, 300
+○ max_depth: None, 10, 20, 30
+○ min_samples_split: 2, 5, 10
+○ min_samples_leaf: 1, 2, 4
+○
+Neural Network:
+○ 64 neurons in the first hidden layer, 32 in the second, and 16 in the third, with ReLU activation.
+○ Dropout layers with rates of 0.5 and 0.3 to prevent overfitting.
+○ A single output neuron with a sigmoid activation for binary classification.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 22
+○ Trained using the Adam optimizer and binary cross-entropy loss.
+○
+Gradient Boosting (XGBoost):
+○ n_estimators: [50, 100, 200]
+○ learning_rate: [0.01, 0.1, 0.2]
+○ max_depth: [3, 5, 7]
+○ min_child_weight: [1, 5, 10]
+○ gamma: [0, 0.1, 0.2]
+○ subsample: [0.8, 1.0]
+○ colsample_bytree: [0.8, 1.0]
+These details provide a comprehensive overview of the tools, libraries, settings, and methods used in the project, making it easier for others to replicate the study.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 23
+3.8 Ethical and Legal Considerations
+In this study, the use of data involving diabetes prediction required careful attention to ethical and legal aspects, particularly given the sensitive nature of health-related information. Although the primary dataset used, the Pima Indian Diabetes dataset, is publicly available and anonymized, the following ethical and legal considerations were observed:
+1.
+Privacy and Data Security: All necessary measures were taken to ensure data security and maintain privacy. In this case the dataset used was anonymized, protecting the privacy and data of participants.
+2.
+Informed Consent: As the dataset is from a publicly available repository with anonymized data, issues of informed consent from participants are not applicable.
+3.
+Transparency and Fair Use: The study followed the principles of transparency by acknowledging the source of the data and what procedures were involved in handling the data. Additionally, the data was used solely for research purposes to contribute to scientific knowledge, with no commercial exploitation.
+4.
+Dataset Biases and Implications for Marginalized Communities:
+●
+Representation Bias: Although highly valid, the Pima Indian Diabetes dataset is bounded in its representation because it holds characteristics related to Pima Indian women essentially. Obviously, this creates room for potential biases, hence setting limitations in generalizing findings into other populations.
+●
+Implications for Marginalized Communities: The use of the Pima Indian Diabetes dataset highlights the importance of addressing representation in healthcare research, as its focus on Pima Indian women introduces biases that limit generalizability to other populations. Models trained on such datasets risk increasing healthcare inequities by providing less accurate predictions or reinforcing disparities in care for underrepresented groups. While this dataset offered valuable insights, future research should prioritize diverse and inclusive data collection to enhance the fairness and applicability of predictive models, ensuring equitable benefits across all communities.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 24
+By addressing these ethical and legal considerations, the study demonstrated a commitment to maintaining high ethical standards, promoting inclusivity, and ensuring that the research aligns with societal values and legal requirements.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 25
+3.9 Limitations of the Methodology
+The methodology adopted in my research study provides enough scope in understanding diabetes prediction using machine learning. Some limitations could not be avoided which could have an impact on the result.
+1.
+Sample Size and Dataset Limitations: The research is anchored mainly upon the Pima Indian Diabetes dataset, among the most utilized, having rather a small sample size. It might bias the results in generalizing the outcomes because larger, more diverse datasets can provide even stronger models, which increase predictive performance.
+2.
+Selection Bias: Since the dataset is mainly from the Pima Indian women population, it involves selection bias. This apparent demographic limitation restricts generalization to other broader populations where other genetics and environmental causes of diabetes may prevail. Inclusion of various ethnic groups can be done in the future to enhance the model's generalizability.
+3.
+Limitations of Machine Learning Models: Each machine learning algorithm has its strengths and weaknesses. For example, logistic regression, while simple and interpretable, does not capture the intricacy of a data set. Much stronger ones are Gradient Boosting Machine; those do suffer from overfitting on smaller sets, though. Apart from this, interpreting complex models does have low readability and, subsequently, less feature understanding and their impact.
+LD7083- Computing and Digital Technologies Project
+LD7083 ADEOLA MARY ADEYEMO Page 26

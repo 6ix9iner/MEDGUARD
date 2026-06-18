@@ -1,0 +1,470 @@
+CHAPTER THREE: METHODOLOGY
+
+3.1 Research Context
+
+Medication safety remains one of the major concerns in healthcare delivery because preventable medication-related harm can occur when prescriptions are not reviewed within the full clinical context of the patient. As established in Chapter One, medication errors are recognized as a leading cause of avoidable patient harm worldwide, while drug-drug interactions are especially important among patients who are exposed to polypharmacy (World Health Organization, 2017; Tatonetti et al., 2012). Clinical Decision Support Systems were introduced to support clinicians by generating automated prescribing alerts, but their practical effectiveness has been limited by excessive and poorly contextualized warnings (Bates et al., 2003; Kesselheim et al., 2011).
+
+This research is therefore situated within the problem of alert fatigue. Alert fatigue occurs when clinicians receive too many low-value or irrelevant alerts, leading to desensitization and frequent alert overrides (Ancker et al., 2017). As discussed in the literature review, many existing CDSS tools fail to integrate patient-specific variables such as current medications, allergies, active diagnoses, renal function, hepatic status, laboratory values, and clinical notes. This limitation makes many alerts generic rather than clinically useful. The methodology adopted in this project responds to this gap by designing and developing an autonomous clinical workflow agent that supports drug interaction review using structured electronic health record data, ingredient resolution, retrieval-grounded reasoning, and explainable alert generation.
+
+The system developed in this study is designed to function as a clinical decision-support prototype. It does not replace physicians, pharmacists, or other licensed healthcare professionals. Rather, it assists the prescribing workflow by reviewing proposed medications against the patient's existing medication profile, allergy history, disease profile, laboratory observations, and clinical context. This is consistent with the aim of the study, which is to conceptualize, develop, and evaluate an autonomous AI agent capable of producing accurate, contextual, and explainable drug interaction alerts.
+
+Figure 3.1 OVERALL SYSTEM ARCHITECTURE DIAGRAM
+
+3.2 Methodology Definition
+
+The methodology used in this project is a system development and prototype evaluation methodology. It combines software engineering, database design, healthcare workflow modelling, and AI-supported reasoning to produce a working clinical decision-support system for drug interaction review. Unlike a purely theoretical study, this methodology involves the design and implementation of a functional web-based system connected to a Supabase backend and autonomous review agents.
+
+The development process followed these major stages:
+
+1. Identification of the medication safety problem from Chapter One and Chapter Two, especially alert fatigue and context-insensitive CDSS alerts.
+2. Collection and de-identification of real-world pharmacy patient medication data.
+3. Design of a normalized electronic health record database structure.
+4. Development of a clinician-facing frontend interface using React and Vite.
+5. Implementation of Supabase backend tables, remote procedure calls, and Edge Functions.
+6. Development of a drug active-ingredient resolver for brand names, generic names, misspellings, and combination drugs.
+7. Implementation of specialized review agents for drug-drug, drug-allergy, and drug-disease/laboratory checks.
+8. Storage of prescription review sessions and generated interaction findings.
+9. Evaluation of the system using controlled prescription review scenarios.
+
+The system workflow begins when a clinician or user searches for a patient using a de-identified patient code. The system retrieves the patient's EHR record from Supabase, including medications, allergies, conditions, observations, encounters, and notes. The user then enters proposed medications. These medications are resolved into active pharmaceutical ingredients before being sent to review agents. The review agents assess possible risks, return structured findings, and save the review output into the database for later reporting.
+
+Figure 3.2 PRESCRIPTION SAFETY REVIEW WORKFLOW FLOWCHART
+
+Using this methodology, the project translates the theoretical issues discussed in Chapter Two into a practical system. Traditional CDSS systems are often static and rule-based, while standalone LLMs may hallucinate or provide outdated information (Moor et al., 2023; Hager et al., 2024). The approach used in this study is hybrid because it combines structured database records, autonomous workflow agents, and retrieval-grounded LLM reasoning.
+
+3.3 System Requirements
+
+The system requirements were derived from the research problem, aim, and objectives discussed in Chapter One. Since the central problem is alert fatigue caused by generic and context-insensitive drug alerts, the system was required to support patient-specific medication review rather than simple drug-name matching.
+
+The functional requirements of the system include the following:
+
+1. Patient lookup: The system should allow a user to retrieve a patient record using a de-identified patient code.
+2. EHR retrieval: The system should fetch relevant patient context, including active medications, allergies, conditions, observations, encounters, procedures, and notes.
+3. Prescription entry: The system should allow the user to enter one or more proposed medications with dose, unit, route, and frequency.
+4. Active ingredient resolution: The system should resolve brand names, misspellings, generic names, and combination drugs into active pharmaceutical ingredients.
+5. Pairwise review: The system should compare proposed medications with current medications, allergies, conditions, and laboratory observations.
+6. Agent-based review: The system should run separate review agents for drug-drug, drug-allergy, and drug-disease/laboratory checks.
+7. Explainable output: The system should return severity, clinical reasoning, explanation, and recommended action for each finding.
+8. Report storage: The system should save prescription review sessions and findings for future review.
+9. EHR update: The system should allow reviewed prescriptions and EHR records to be added or updated.
+
+The non-functional requirements include the following:
+
+1. Privacy: Patient personal information should be removed and replaced with anonymous patient codes.
+2. Explainability: Alerts should provide a reason and action, not only a warning label.
+3. Source control: The AI review should be restricted to selected clinical knowledge sources.
+4. Usability: The interface should support a direct prescribing workflow with clear sections for patient search, prescription entry, review, and reporting.
+5. Reliability: The system should include error handling, timeouts, and fallback messages when AI services are unavailable.
+6. Security: Sensitive backend credentials should remain in Supabase Edge Functions rather than in browser code.
+
+Figure 3.3 FUNCTIONAL AND NON-FUNCTIONAL REQUIREMENTS DIAGRAM
+
+3.4 System Architecture
+
+The system was designed using a layered architecture. This approach separates the user interface, backend logic, database storage, and AI reasoning services. The purpose of this separation is to make the system easier to maintain, safer to deploy, and clearer to explain in relation to the research objectives.
+
+The architecture consists of four main layers:
+
+1. Presentation layer: This is the React frontend. It provides the clinical workspace where the user searches for a patient, enters prescriptions, runs reviews, views EHR records, and opens saved reports.
+2. Application and agent layer: This layer is implemented using Supabase Edge Functions. It contains the active ingredient resolver and the three review agents: review-ddi, review-allergy, and review-disease.
+3. Data layer: This is the Supabase PostgreSQL database. It stores patient records, medications, allergies, conditions, observations, review sessions, and interaction findings.
+4. AI and retrieval layer: This layer consists of Gemini 3.5 Flash and Google Search Grounding. It supports ingredient resolution, contextual clinical reasoning, and source-grounded review.
+
+The frontend communicates with Supabase using the public anon key for normal browser operations. However, sensitive operations that require backend authority are handled inside Supabase Edge Functions using server-side environment variables such as the Supabase service role key and Google service account credentials. This means that the most sensitive credentials are not exposed in the frontend.
+
+Figure 3.4 FOUR-LAYER SYSTEM ARCHITECTURE DIAGRAM
+
+3.5 Data Source and Database Design
+
+The dataset used in this project was obtained from real-world patient medication records collected through a local pharmacy. Because the data originally related to real patients, privacy protection was treated as a major requirement before the data was used in the system. Patient names, phone numbers, addresses, dates of birth, and other personal identifiers were removed. Each patient was represented only with a de-identified patient code such as EHR-PT-0001. This ensured that the system could be tested with realistic clinical information while protecting patient confidentiality.
+
+The pharmacy records were transformed into an EHR-like structure suitable for prescription safety review. The data contained medication histories, allergies, conditions, laboratory or vital observations where available, and clinical notes useful for evaluating medication safety. The purpose of using this type of data was to make the system more realistic than a purely artificial dataset, while still maintaining privacy and ethical handling of patient information.
+
+The database was implemented using Supabase PostgreSQL. The database design follows a normalized structure so that patient information is separated into different clinical domains. This makes it easier to retrieve patient-specific context and reduces duplication. The database structure also supports future extension because additional tables or fields can be added without changing the overall architecture.
+
+The major database tables used in the project are:
+
+1. ehr_patients: Stores de-identified patient shell records using patient codes.
+2. ehr_encounters: Stores patient visit or encounter details.
+3. ehr_conditions: Stores active and historical diagnoses.
+4. ehr_medications: Stores current and previous medications, active ingredients, dosage, route, and frequency.
+5. ehr_allergies: Stores allergy substances, reaction descriptions, and criticality.
+6. ehr_observations: Stores laboratory values, vital signs, and clinical observations.
+7. ehr_procedures: Stores procedures performed on patients.
+8. ehr_clinical_notes: Stores clinical notes and narrative context.
+9. ehr_audit_events: Stores audit-related events.
+10. prescription_review_sessions: Stores each prescription review request.
+11. interaction_findings: Stores each interaction finding generated by the review agents.
+12. drug_knowledge_documents: Provides a structure for storing drug knowledge documents and vector embeddings for future retrieval use.
+
+A PostgreSQL function named get_patient_ehr was created to assemble a patient's full record into one JSON object. This function allows the frontend and backend review agents to fetch all relevant patient context using a single patient code.
+
+Figure 3.5 ENTITY RELATIONSHIP DIAGRAM OF THE SUPABASE DATABASE
+
+Figure 3.6 SUPABASE CLOUD PROJECT DASHBOARD SCREENSHOT
+
+Figure 3.7 DATABASE RECORD COUNT CHART
+
+3.6 Data De-Identification and Transformation
+
+Before the pharmacy-derived records were entered into the database, a data transformation process was carried out. This was necessary because raw pharmacy records are usually not structured in the same way as an electronic health record database. The transformation process converted the raw records into separate clinical tables that could be used by the review agents.
+
+The transformation process included the following steps:
+
+1. Removal of direct identifiers: Patient names, phone numbers, home addresses, and other personal details were removed.
+2. Patient code assignment: Each patient was assigned a unique anonymous patient code.
+3. Medication standardization: Medication names were entered in a consistent format and active ingredients were recorded where known.
+4. Status assignment: Medications were classified as active, completed, stopped, on hold, or entered in error where applicable.
+5. Allergy structuring: Allergy records were separated into substance, reaction, criticality, and status.
+6. Condition mapping: Diagnoses or relevant clinical conditions were structured into condition records.
+7. Observation mapping: Laboratory values and vital signs were placed into the observation table where available.
+8. Clinical note summarization: Useful contextual information was written into clinical notes without including personal identifiers.
+
+This transformation made it possible for the system to use real-world clinical patterns while maintaining patient confidentiality. It also allowed the AI review agents to work with structured inputs rather than unorganized free text.
+
+Figure 3.8 DATA DE-IDENTIFICATION AND TRANSFORMATION WORKFLOW
+
+3.7 Comparison Analysis
+
+This section compares the developed system with existing methods and studies discussed in the literature review. The comparison is important because the project is not simply building another drug alert system; it is attempting to address the weaknesses of previous approaches by combining structured data, retrieval, and autonomous workflow logic.
+
+3.7.1 Comparison with Prior Studies or Models
+
+Comparison with traditional rule-based systems: Traditional CDSS platforms usually rely on predefined interaction rules and static drug databases. Although these systems can detect many known drug interactions, they often generate generic warnings that do not fully consider the patient's clinical context. This contributes to alert fatigue and high override rates (Kesselheim et al., 2011; Park et al., 2022). The system developed in this project improves on this limitation by checking proposed medications against the patient's active medications, allergies, conditions, observations, and notes.
+
+Comparison with standalone LLM systems: Large Language Models can generate explanations and summarize complex clinical information, but they also have limitations such as hallucination, outdated knowledge, lack of transparency, and bias (Moor et al., 2023; Hager et al., 2024). To reduce these risks, the proposed system uses a structured prompt format and retrieval-grounded reasoning. The review agents are instructed to use evidence from trusted clinical sources and produce structured JSON-like output. This supports the literature that Retrieval-Augmented Generation can improve factual grounding and reduce hallucination risk in healthcare applications (Amugongo et al., 2025; Zakka et al., 2024).
+
+Comparison with autonomous healthcare agents: Autonomous agents are useful because they can coordinate multi-step tasks and reason across different workflow stages. However, Chapter Two showed that many agentic healthcare systems remain limited to simulations and are not sufficiently operationalized for clinical workflows (Mehandru et al., 2024; Singh et al., 2025). This project operationalizes the agentic concept by implementing separate review agents for DDI, allergy, and disease/laboratory checks, all connected to a live Supabase backend and a clinical user interface.
+
+Figure 3.9 COMPARISON TABLE: TRADITIONAL CDSS, STANDALONE LLM, RAG, AND PROPOSED AGENT SYSTEM
+
+3.7.2 Insight into Trends or Patterns
+
+A major pattern identified in the literature is that medication alerts become more useful when they are patient-specific. A drug combination may be low risk in one patient but high risk in another patient with kidney disease, abnormal potassium, liver dysfunction, bleeding history, anticoagulant therapy, or a documented allergy. Therefore, an effective drug interaction review system should not only detect the existence of a drug pair, but also assess its clinical relevance.
+
+This system reflects that trend by using patient context as part of the review process. For example, the DDI agent considers active medications and proposed drugs; the allergy agent considers documented allergies and reaction severity; and the disease agent considers diagnoses, laboratory values, and vital signs. This supports the argument in Chapter Two that contextual awareness is central to reducing irrelevant alerts and improving clinician trust.
+
+Figure 3.10 PATIENT CONTEXT VARIABLES USED BY THE REVIEW AGENTS
+
+3.8 Input Preprocessing
+
+Input preprocessing is an important part of the system because medication names can be entered in different ways. A clinician may enter a brand name, a generic name, a misspelled name, or a combination product. If the system reviews the raw text without normalization, it may miss important interactions or produce inaccurate findings.
+
+The first preprocessing step is active ingredient resolution. This is handled by a Supabase Edge Function named resolve-drug-ingredient. The frontend sends the entered medication name to this function. The function then uses Gemini 3.5 Flash to identify the active pharmaceutical ingredient. For example, if a user enters a brand name, the resolver returns the generic ingredient. If the user enters a misspelled drug name, the resolver attempts to correct it. If the user enters a combination product, the resolver returns the active ingredients.
+
+Figure 3.11 ACTIVE INGREDIENT RESOLVER PROMPT SCREENSHOT
+
+Figure 3.12 CODE SCREENSHOT OF resolve-drug-ingredient EDGE FUNCTION
+
+The second preprocessing step is ingredient decomposition and expansion. Combination products may contain more than one active ingredient, and checking them as a single string may hide specific two-way interactions. To solve this, the backend splits combined ingredients using delimiters such as commas, semicolons, slashes, plus signs, and the word "and". Each ingredient is then expanded into a separate review item.
+
+This pairwise expansion improves the sensitivity of the system. For example, a combination medication can be decomposed into its individual ingredients, and each ingredient can be reviewed against the patient's current medications, allergies, conditions, and observations.
+
+Figure 3.13 PAIRWISE INGREDIENT EXPANSION DIAGRAM
+
+3.9 Pairing Algorithm and Context-Matching Process
+
+The pairing algorithm is one of the most important parts of the methodology because it determines what the review agents actually evaluate. Traditional CDSS systems often check a newly prescribed drug against a broad interaction database and then return generic alerts. In contrast, this system creates patient-specific comparison pairs from the proposed prescription and the patient's existing EHR context. This allows the review to be more targeted and reduces the likelihood of irrelevant alerts.
+
+The pairing process begins after active ingredient resolution. Every proposed medication is normalized into an active ingredient. If the drug is a combination product, it is split into separate active ingredients before pairing. The system then compares the proposed ingredients against four clinical context groups:
+
+1. Proposed medications against other proposed medications.
+2. Proposed medications against current active medications.
+3. Proposed medications against current documented allergies.
+4. Proposed medications against current and historical diseases, laboratory results, and vital observations.
+
+The first two pairing groups are handled by the Drug-Drug Interaction Agent. The system checks proposed-proposed pairs and proposed-current pairs. Proposed-proposed pairs are created when more than one new drug is entered in the prescription workspace. Proposed-current pairs are created by comparing each newly prescribed drug with each medication already marked as active in the patient's EHR.
+
+For example, if a clinician prescribes clopidogrel and cimetidine for patient EHR-PT-0001, and the patient's current active medications are aspirin, metformin, lisinopril, and amlodipine, the system generates the following DDI pairs:
+
+1. Clopidogrel - Cimetidine: proposed drug against proposed drug.
+2. Clopidogrel - Aspirin: proposed drug against current active medication.
+3. Clopidogrel - Metformin: proposed drug against current active medication.
+4. Clopidogrel - Lisinopril: proposed drug against current active medication.
+5. Clopidogrel - Amlodipine: proposed drug against current active medication.
+6. Cimetidine - Aspirin: proposed drug against current active medication.
+7. Cimetidine - Metformin: proposed drug against current active medication.
+8. Cimetidine - Lisinopril: proposed drug against current active medication.
+9. Cimetidine - Amlodipine: proposed drug against current active medication.
+
+This means that the system does not only ask whether the new prescription is generally safe. It checks every relevant two-way medication relationship in the context of the patient's current therapy. This pairwise method is useful because clinically important interactions may be missed if several drugs are reviewed as one large group. By decomposing the prescription into direct pairs, the system improves the precision of the review.
+
+Figure 3.14 EXAMPLE OF PROPOSED-CURRENT MEDICATION PAIRING
+
+The allergy pairing process is handled by the Drug-Allergy Agent. In this stage, each proposed medication ingredient is paired with each active allergy in the patient's EHR. For example, if a patient has an active allergy to sulfonamide antibiotics and the proposed medication is co-trimoxazole, the system creates a pair between co-trimoxazole or its resolved ingredients and sulfonamide antibiotics. The agent then checks whether the proposed drug is directly related to the allergen, belongs to the same class, or has a clinically meaningful cross-reactivity risk.
+
+Figure 3.15 EXAMPLE OF DRUG-ALLERGY PAIRING
+
+The disease and laboratory pairing process is handled by the Drug-Disease Agent. In this stage, each proposed medication ingredient is paired with each recorded condition and each relevant observation. Conditions include active diagnoses such as chronic kidney disease, hypertension, asthma, peptic ulcer disease, HIV, tuberculosis, heart failure, and other clinical problems. Observations include laboratory values and vital signs such as estimated glomerular filtration rate, serum creatinine, potassium, alanine aminotransferase, blood pressure, oxygen saturation, haemoglobin, and other recorded results.
+
+For example, if metformin is prescribed for a patient with chronic kidney disease stage 3a and a low estimated glomerular filtration rate, the system creates the following review pairs:
+
+1. Metformin - Chronic kidney disease stage 3a.
+2. Metformin - Estimated glomerular filtration rate.
+3. Metformin - Serum creatinine.
+
+These pairs allow the disease/lab agent to consider whether the proposed medication is contraindicated, requires dose adjustment, or requires monitoring in relation to the patient's condition and laboratory profile. This is important because a drug may not be dangerous by itself, but may become unsafe because of the patient's renal function, liver function, bleeding risk, electrolyte abnormality, pregnancy status, or active disease state.
+
+Figure 3.16 EXAMPLE OF DRUG-DISEASE AND DRUG-LAB PAIRING
+
+The system also removes repeated comparisons so that the same pair is not reviewed more than once. For example, aspirin - clopidogrel and clopidogrel - aspirin represent the same interaction and should only be checked once. This deduplication prevents unnecessary repeated alerts and supports the overall aim of reducing alert fatigue.
+
+The general pairing logic can be summarized as follows:
+
+1. Resolve all proposed drugs into active ingredients.
+2. Split combination products into individual ingredients.
+3. Retrieve active EHR medications, allergies, conditions, observations, and notes.
+4. Build proposed-proposed medication pairs.
+5. Build proposed-current medication pairs.
+6. Build proposed-allergy pairs.
+7. Build proposed-condition and proposed-observation pairs.
+8. Remove duplicate pairs.
+9. Send each pair group to the appropriate review agent.
+10. Return severity, explanation, reasoning, recommendation, and report output.
+
+Figure 3.17 PAIRING ALGORITHM FLOWCHART
+
+3.10 Restricted Knowledge Base and Retrieval-Grounded Review
+
+A major limitation of standalone LLMs in healthcare is that they may generate plausible but inaccurate information, a problem identified in Chapter Two as hallucination (Moor et al., 2023; Hager et al., 2024). To reduce this risk, the system uses a restricted retrieval-grounded approach. The review agents are instructed to rely on four selected clinical knowledge sources when generating evidence-based medication safety findings:
+
+1. PubMed.
+2. Drugs.com.
+3. Medscape.
+4. Empathia AI.
+
+These sources were selected because they represent different types of clinical knowledge needed for drug interaction review. PubMed was selected because it provides access to peer-reviewed biomedical literature and clinical studies. Drugs.com was selected because it provides practical drug interaction monographs and medication safety information. Medscape was selected because it provides clinician-oriented drug, disease, and pharmacology references. Empathia AI was included as a clinical decision-support knowledge source to support structured medication safety reasoning.
+
+The purpose of restricting the knowledge base is to prevent the model from relying on broad, unreliable, or non-clinical web content. In healthcare, an unrestricted search may retrieve blogs, advertisements, incomplete summaries, or non-authoritative content. By limiting the review to approved medical sources, the system improves trust, transparency, and clinical relevance. This aligns with the literature on Retrieval-Augmented Generation, which argues that grounding LLM outputs in verifiable external knowledge can reduce hallucination and improve factual consistency (Amugongo et al., 2025; Zakka et al., 2024).
+
+Figure 3.18 RESTRICTED KNOWLEDGE BASE DIAGRAM
+
+The retrieval-grounded process works in two stages. First, during the main review, the review agent uses Google Search Grounding to support the reasoning process. The agent is instructed to search and reason using the approved clinical sources, but not to output raw citations inside the initial review. This keeps the first alert concise and prevents the user interface from becoming overloaded.
+
+Second, the system supports on-demand reference fetching. When references are needed for a particular finding, the frontend can call the same review function in references mode. In this mode, the backend asks the model to identify which of the approved sources support the interaction. The backend then maps the source identifiers into evidence links or deterministic search URLs. This creates a controlled evidence retrieval process rather than allowing uncontrolled citation generation.
+
+Figure 3.19 ON-DEMAND CLINICAL REFERENCE RETRIEVAL WORKFLOW
+
+The four-source restriction also supports the research objective of explainability. Each generated alert is expected to include a severity level, signal, clinical reasoning, concise detail, and action plan. The evidence sources support the reasoning behind the alert and allow clinicians or evaluators to verify the generated warning. This is especially important in clinical decision support because explainability and trust are central to adoption.
+
+3.11 Prompt Engineering Strategy
+
+Prompt engineering was used to control how the AI agents reasoned and returned their results. This was necessary because unrestricted LLM output can be inconsistent, too long, or difficult to store in a database. The prompts were therefore designed to produce structured and clinically useful responses.
+
+The prompt strategy included the following:
+
+1. Role definition: Each agent was assigned a clear role, such as drug-drug interaction review agent or clinical pharmacist.
+2. Task restriction: Each agent was instructed to focus only on its assigned task. For example, the allergy agent was instructed not to perform drug-drug review.
+3. Source restriction: The agents were instructed to reason using the four approved sources.
+4. Structured output: The agents were required to return a strict structure containing severity, signal, reasoning, detail, and action.
+5. Controlled severity labels: Severity was limited to none, low, medium, high, and critical.
+6. Concise clinical explanation: The prompts instructed the model to keep details and actions short to reduce response truncation.
+7. Patient-specific reasoning: The agents were instructed to relate findings to the patient's EHR context rather than giving generic drug information.
+
+This prompt design supports the aim of explainability. Instead of returning a simple warning, the system returns an explanation of why the alert matters and what action should be taken. This responds to the literature showing that lack of transparency and poor contextual relevance reduce trust in clinical decision support systems (Kesselheim et al., 2011; Moor et al., 2023).
+
+Figure 3.20 PROMPT ENGINEERING STRATEGY DIAGRAM
+
+3.12 Multi-Agent Safety Review Pipeline
+
+The safety review pipeline consists of three specialized autonomous review agents. Each agent is implemented as a Supabase Edge Function and performs a different clinical safety task. This modular design improves organization because drug-drug interactions, allergies, and disease contraindications require different reasoning processes.
+
+3.12.1 Drug-Drug Interaction Agent
+
+The Drug-Drug Interaction Agent is implemented in the review-ddi Edge Function. Its role is to compare proposed medications against one another and against the patient's existing active medications. The function first receives the patient code and proposed medications from the frontend. It then fetches the patient's complete EHR context using the get_patient_ehr RPC function. After this, it extracts active medications and builds pairwise comparisons.
+
+The agent sends a structured payload to Gemini 3.5 Flash with Google Search Grounding enabled. The model is instructed to evaluate each pair, integrate patient-specific context, assign a severity level, explain the mechanism of risk, and recommend an action. The output is parsed and saved to Supabase.
+
+The DDI agent returns findings with the following elements:
+
+1. Interaction type.
+2. Severity level.
+3. Signal or interaction title.
+4. Clinical reasoning.
+5. Detailed explanation.
+6. Recommended action.
+7. Evidence placeholders or reference outputs.
+
+The DDI agent also includes a post-processing step. The AI model returns a structured text block containing severity, signal, reasoning, detail, and action. The backend parses this response and converts it into database-ready findings. If the model omits a pair that was checked and no interaction was found, the system can add a "none" severity finding for that pair. This provides traceability because the user can see that the pair was reviewed rather than ignored.
+
+Figure 3.21 DDI AGENT PROMPT SCREENSHOT
+
+Figure 3.22 DDI AGENT EXECUTION FLOW
+
+3.12.2 Drug-Allergy Agent
+
+The Drug-Allergy Agent is implemented in the review-allergy Edge Function. Its role is to compare proposed active ingredients with the patient's documented allergies. It considers direct allergy, class cross-reactivity, and pharmacological overlap. For example, if a patient has a penicillin class allergy, the system can evaluate whether a proposed antibiotic is clinically related to that allergy.
+
+The allergy agent first filters the patient's allergy records to identify active allergies. If the patient has no active allergy or a "no known drug allergy" entry, the function returns a clean result without unnecessary AI processing. If allergies are present, it constructs medication-allergen pairs and sends them to the review model for analysis.
+
+This early return logic is important because it prevents the system from generating unnecessary allergy alerts when the patient's record clearly indicates no known drug allergy. It also reduces unnecessary AI calls and helps keep the system efficient.
+
+Figure 3.23 ALLERGY AGENT PROMPT SCREENSHOT
+
+Figure 3.24 DRUG-ALLERGY REVIEW OUTPUT SCREENSHOT
+
+3.12.3 Drug-Disease and Laboratory Agent
+
+The Drug-Disease and Laboratory Agent is implemented in the review-disease Edge Function. Its role is to compare proposed medications against patient diagnoses, clinical conditions, laboratory values, and vital signs. This is important because some drugs are unsafe in patients with renal impairment, liver disease, pregnancy, bleeding history, abnormal electrolyte values, or other clinical risks.
+
+The agent fetches the patient EHR, extracts conditions and observations, removes duplicates, and builds medication-condition and medication-observation pairs. These are then reviewed using retrieval-grounded reasoning. The agent produces findings that include severity, mechanism, patient-specific explanation, and recommended action.
+
+The disease/lab agent considers both active conditions and past history. This is important because some historical diseases remain clinically relevant. For instance, a previous gastrointestinal bleeding episode may still affect the safety of prescribing NSAIDs or antiplatelet drugs. Similarly, previous liver injury may remain relevant when prescribing hepatotoxic medications.
+
+Figure 3.25 DISEASE/LAB AGENT PROMPT SCREENSHOT
+
+Figure 3.26 DRUG-DISEASE AND LAB REVIEW WORKFLOW DIAGRAM
+
+3.13 Error Handling and Fallback Mechanisms
+
+Because the system depends on cloud services and AI model calls, error handling was included in the methodology. The system is designed to avoid silent failures. If the review agent cannot complete a task, the user receives a clear message and is advised to verify the medication manually.
+
+The main error handling methods include:
+
+1. Input validation: The backend checks that required fields such as patientCode and proposedMedications are present.
+2. Patient existence checks: If a patient code does not exist, the system returns a clear not-found message.
+3. Timeout handling: The frontend uses extended timeouts for review calls because AI-powered review may take longer than normal database operations.
+4. Retry handling: The Edge Functions retry Gemini calls when temporary resource or rate-limit errors occur.
+5. Fallback output: If the AI review fails, the system returns a safe fallback finding advising manual review.
+6. Early return logic: If there are no active allergies or no disease/lab records, the relevant agent returns a clean result without unnecessary processing.
+7. Evidence fallback: If reference retrieval fails, the backend can still return deterministic search URLs for approved sources.
+
+These mechanisms are important in healthcare-related systems because a failure should not be hidden from the user. Instead, the system should communicate uncertainty and direct the user toward manual verification. This supports safe use of the prototype and recognizes the limitations of AI systems in clinical settings.
+
+Figure 3.27 ERROR HANDLING AND FALLBACK FLOWCHART
+
+3.14 Backend Post-Processing and Report Persistence
+
+After each review agent receives a response from the model, the backend does not send the raw model output directly to the frontend. Instead, the response is parsed, validated, and transformed into a consistent finding format. This is necessary because healthcare review output must be structured enough to display clearly and store reliably.
+
+The post-processing stage extracts the following fields:
+
+1. Severity.
+2. Signal.
+3. Clinical reasoning.
+4. Detail.
+5. Recommended action.
+6. Evidence metadata.
+7. Interaction type.
+
+The severity is restricted to five categories: none, low, medium, high, and critical. This controlled severity scale makes the output easier to compare across DDI, allergy, and disease findings. It also prevents unclear labels from being stored in the database.
+
+Each completed review creates a new record in prescription_review_sessions. The individual findings are stored in interaction_findings. This report persistence feature is important because it allows the system to maintain a history of prescription safety reviews. A user can later open the Reports page and inspect past review sessions, proposed medications, normalized ingredients, severity, explanations, and recommendations.
+
+Figure 3.28 REVIEW SESSION AND FINDINGS STORAGE DIAGRAM
+
+3.15 Frontend Workflow Design
+
+The frontend of the system was built using React and Vite. It provides the user interface for clinicians or evaluators to interact with the system. The interface was designed as a clinical workspace rather than a general website. It contains navigation for prescription review, EHR records, and reports.
+
+The Prescription page allows the user to search for a patient, enter proposed medications, resolve active ingredients, run the three safety review agents, and save the prescription after review. The EHR Records page allows the user to view and maintain patient-related records such as medications, conditions, allergies, observations, and notes. The Reports page displays previous review sessions and their findings.
+
+The frontend communicates with Supabase in two major ways. First, it uses the Supabase client to read and write database records. Second, it calls Supabase Edge Functions to run the ingredient resolver and the three review agents. This separation ensures that sensitive backend logic and service-role access remain outside the browser.
+
+The frontend also enforces the review-before-save workflow. A prescription cannot be saved into the EHR medications table until the DDI review has been completed. This design decision supports safer prescribing behaviour because it encourages medication review before the prescription becomes part of the active medication list.
+
+Figure 3.29 PRESCRIPTION WORKSPACE USER INTERFACE SCREENSHOT
+
+Figure 3.30 EHR RECORDS PAGE SCREENSHOT
+
+Figure 3.31 REPORTS PAGE SCREENSHOT
+
+3.16 Data Analysis and Evaluation Technique
+
+The system was evaluated using controlled prescription review scenarios based on the de-identified pharmacy-derived patient records. The aim was not to perform full hospital deployment, but to determine whether the prototype could demonstrate contextual medication safety review. The evaluation focused on whether the system could correctly fetch patient context, normalize medication names, run review agents, display findings, and save review reports.
+
+The evaluation considered the following:
+
+1. Patient lookup: Whether the system could retrieve a patient's EHR using a de-identified patient code.
+2. Ingredient resolution: Whether the system could resolve brand names, generic names, misspellings, and combination products.
+3. DDI review: Whether proposed medications were compared against each other and against active medications.
+4. Allergy review: Whether proposed medications were compared against documented allergies.
+5. Disease/lab review: Whether medications were assessed against diagnoses, observations, and laboratory values.
+6. Report storage: Whether review sessions and findings were saved in Supabase.
+7. Explainability: Whether findings contained reasoning, detail, severity, and action.
+
+Additional evaluation checks were also considered. These include whether duplicate pairs were removed, whether combination drugs were split correctly, whether the system returned a clean output when no allergies or no conditions were available, and whether references could be fetched on demand. These checks are important because they evaluate the actual workflow, not only the final text produced by the model.
+
+The evaluation metrics used for the prototype are shown below:
+
+1. Patient retrieval success: Whether the correct patient EHR was returned from the patient code.
+2. Ingredient resolution success: Whether medication names were resolved into correct active ingredients.
+3. Pair generation completeness: Whether all expected proposed-proposed, proposed-current, proposed-allergy, and proposed-condition/lab pairs were generated.
+4. Duplicate control: Whether repeated pairs were removed.
+5. Review completion: Whether each agent returned a completed result or a safe fallback response.
+6. Finding explainability: Whether each finding contained severity, reasoning, detail, and recommended action.
+7. Report persistence: Whether sessions and findings were saved and could be retrieved later.
+8. Source grounding: Whether references were restricted to the approved knowledge sources.
+
+Figure 3.32 EVALUATION METRICS TABLE
+
+The following controlled test scenarios were selected because they represent common medication safety risks:
+
+1. Aspirin and clopidogrel: To test bleeding-risk detection.
+2. Cimetidine and metformin: To test interaction reasoning in a patient with renal concerns.
+3. Co-trimoxazole and sulfonamide allergy: To test drug-allergy cross-reactivity.
+4. NSAID and peptic ulcer history: To test drug-disease risk detection.
+5. Metformin and chronic kidney disease: To test renal function contextualization.
+6. Macrolide antibiotic and QT-risk profile: To test cardiac safety reasoning.
+7. Tacrolimus and fluconazole: To test interaction with immunosuppressive therapy.
+8. Lithium and renal impairment or diuretic therapy: To test narrow therapeutic index medication risk.
+9. Methotrexate and trimethoprim-containing antibiotic: To test myelosuppression risk.
+10. Rifampicin and antiretroviral therapy: To test enzyme induction interaction.
+
+Figure 3.33 CONTROLLED TEST SCENARIO TABLE
+
+Figure 3.34 SAMPLE JSON RESPONSE FROM REVIEW AGENT
+
+Figure 3.35 SAMPLE SAVED PRESCRIPTION REVIEW REPORT
+
+3.17 Tools and Materials
+
+Several tools and technologies were used to develop the system.
+
+React: React was used to build the frontend user interface. It enabled the creation of reusable components for patient search, prescription entry, EHR viewing, and report display.
+
+Vite: Vite was used as the frontend development and build tool. It provided fast local development and production bundling.
+
+Supabase: Supabase was used as the backend platform. It provided the PostgreSQL database, API access, remote procedure calls, cloud project hosting, and Edge Function deployment.
+
+PostgreSQL: PostgreSQL was used to store structured patient records, medication histories, allergies, conditions, observations, review sessions, and interaction findings.
+
+Supabase Edge Functions: Edge Functions were used to implement backend logic for ingredient resolution and safety review. These functions run outside the browser and securely access service-role environment variables.
+
+Gemini 3.5 Flash: Gemini 3.5 Flash was used for ingredient resolution and clinical reasoning tasks.
+
+Google Search Grounding: Google Search Grounding was used to support retrieval-grounded clinical reasoning from external medical knowledge sources.
+
+JavaScript and TypeScript: JavaScript was used in the frontend while TypeScript was used in the Supabase Edge Functions.
+
+Lucide React: Lucide React was used to provide icons for the user interface.
+
+Figure 3.36 TOOLS AND TECHNOLOGY STACK DIAGRAM
+
+3.18 Ethical and Legal Considerations
+
+This study involved real-world patient medication data obtained through a local pharmacy; therefore, privacy and confidentiality were important ethical requirements. Before the data was entered into the system, patient names, phone numbers, addresses, dates of birth, and other personal identifiers were removed. Patients were represented only by anonymous patient codes. This approach ensured that the system could be evaluated with realistic medication records while reducing the risk of exposing private patient information.
+
+The system was developed strictly as a clinical decision-support prototype. It does not make final prescribing decisions and does not replace the judgement of qualified healthcare professionals. This is important because AI systems in healthcare can produce errors, hallucinations, or biased outputs (Moor et al., 2023; Hager et al., 2024). To reduce this risk, the system uses structured prompts, retrieval grounding, controlled output formats, and persistent review records.
+
+Transparency was also considered in the system design. Each review output includes severity, clinical reasoning, explanation, and recommended action. This makes the alert more understandable than a simple warning message and supports clinician trust. However, the system should still be used only as an assistive tool, and clinical decisions should be verified by trained professionals.
+
+Figure 3.37 PRIVACY AND SECURITY ARCHITECTURE DIAGRAM
+
+3.19 System Scope and Boundaries
+
+The system has clear boundaries. It is a prototype clinical decision-support system for medication safety review. It does not make final prescribing decisions and does not replace a doctor or pharmacist. It does not perform diagnosis, emergency triage, or treatment planning. It also does not currently provide full pharmacogenomic review, drug-food interaction review, or complete hospital EHR integration.
+
+The system focuses on four main safety checks: drug-drug, drug-allergy, drug-disease, and drug-laboratory/observation review. It is designed for controlled evaluation and academic demonstration rather than immediate production deployment. Therefore, any output generated by the system should be interpreted as decision support and verified by qualified healthcare professionals.
+
+Figure 3.38 SYSTEM SCOPE AND BOUNDARY DIAGRAM
+
+3.20 Limitations of the Methodology
+
+The methodology adopted in this study has some limitations. First, although the data was obtained from real-world pharmacy records, the system was evaluated as a prototype and was not deployed in a live hospital prescribing environment. Therefore, the findings cannot be interpreted as evidence of full clinical effectiveness.
+
+Second, the quality of the review depends on the completeness of the patient record. If a patient's medication list, allergy history, diagnosis, or laboratory data is incomplete, the system may miss important risks. Third, although retrieval grounding reduces hallucination, it does not completely eliminate the possibility of incorrect or incomplete AI-generated reasoning. Fourth, the project does not implement full regulatory compliance for production-level clinical deployment.
+
+Another limitation is that the system requires internet access and external AI services for ingredient resolution and grounded review. If these services are unavailable, the system may return fallback messages or require manual review. Finally, the prototype focuses on medication safety review and does not cover every possible clinical factor, such as drug-food interactions, pharmacogenomics, pregnancy-specific guideline depth, or full real-time hospital EHR integration.
+
+Despite these limitations, the methodology provides a practical foundation for investigating how autonomous agents, retrieval-grounded AI, and structured EHR data can be combined to improve drug interaction review. It directly addresses the problem of alert fatigue by focusing on contextual, explainable, and patient-specific medication safety alerts.

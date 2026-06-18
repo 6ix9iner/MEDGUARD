@@ -18,7 +18,32 @@ import {
   Stethoscope,
   UserRound,
 } from "lucide-react";
-import { supabase } from "./supabaseClient";
+import { supabase, supabaseUrl, supabaseAnonKey } from "./supabaseClient";
+
+const parseFindingDetail = (finding) => {
+  if (finding.reasoning) {
+    return {
+      reasoning: finding.reasoning,
+      detail: finding.detail
+    };
+  }
+  
+  const text = finding.detail || finding.explanation || "";
+  if (text.startsWith("Medical Reasoning:") && text.includes("\n\nDetail:")) {
+    const parts = text.split("\n\nDetail:");
+    const reasoningText = parts[0].replace("Medical Reasoning:", "").trim();
+    const detailText = parts[1].trim();
+    return {
+      reasoning: reasoningText,
+      detail: detailText
+    };
+  }
+  
+  return {
+    reasoning: null,
+    detail: text
+  };
+};
 
 const pages = [
   { id: "prescription", label: "Prescription", icon: ClipboardList },
@@ -300,20 +325,20 @@ function App() {
   const [editRecordId, setEditRecordId] = useState("");
   const [editForm, setEditForm] = useState(blankFormFor("condition"));
   const [prescription, setPrescription] = useState({
-    name: "Clodorel",
-    dose: "75",
+    name: "",
+    dose: "",
     unit: "mg",
     route: "Oral route",
-    frequency: "once daily",
+    frequency: "",
   });
   const [prescriptionItems, setPrescriptionItems] = useState([
     {
       id: "rx-1",
-      name: "Clodorel",
-      dose: "75",
+      name: "",
+      dose: "",
       unit: "mg",
       route: "Oral route",
-      frequency: "once daily",
+      frequency: "",
       ingredient: "",
       resolutionStatus: "pending",
       resolutionSource: "",
@@ -334,6 +359,19 @@ function App() {
   ]);
   const [reviewFindings, setReviewFindings] = useState([]);
   const [reviewCompleted, setReviewCompleted] = useState(false);
+  const [loadingReferences, setLoadingReferences] = useState({});
+
+  // Drug-to-Allergy agent state
+  const [allergyFindings, setAllergyFindings] = useState([]);
+  const [allergyReviewCompleted, setAllergyReviewCompleted] = useState(false);
+  const [loadingAllergyReview, setLoadingAllergyReview] = useState(false);
+  const [loadingAllergyReferences, setLoadingAllergyReferences] = useState({});
+
+  // Drug-to-Disease agent state
+  const [diseaseFindings, setDiseaseFindings] = useState([]);
+  const [diseaseReviewCompleted, setDiseaseReviewCompleted] = useState(false);
+  const [loadingDiseaseReview, setLoadingDiseaseReview] = useState(false);
+  const [loadingDiseaseReferences, setLoadingDiseaseReferences] = useState({});
 
   const patient = ehr?.patient;
   const latestEncounter = ehr?.encounters?.[0];
@@ -608,6 +646,13 @@ function App() {
   function resetReview() {
     setReviewCompleted(false);
     setReviewFindings([]);
+    setLoadingReferences({});
+    setAllergyFindings([]);
+    setAllergyReviewCompleted(false);
+    setLoadingAllergyReferences({});
+    setDiseaseFindings([]);
+    setDiseaseReviewCompleted(false);
+    setLoadingDiseaseReferences({});
   }
 
   async function resolvePrescriptionIngredients() {
@@ -632,6 +677,11 @@ function App() {
           };
         }
 
+        // Skip if already resolved to save API calls and decrease latency
+        if (["resolved", "ingredient"].includes(item.resolutionStatus) && item.ingredient) {
+          return item;
+        }
+
         const result = await resolveDrugIngredientOnline(item.name.trim());
         return { ...item, ...result };
       })
@@ -651,6 +701,11 @@ function App() {
     const item = prescriptionItems.find((entry) => entry.id === itemId);
     if (!item?.name.trim()) return;
 
+    // Skip if already resolved to save API calls and decrease latency
+    if (["resolved", "ingredient"].includes(item.resolutionStatus) && item.ingredient) {
+      return;
+    }
+
     setLoading(true);
     setMessage(`Searching active ingredient for ${item.name.trim()}...`);
 
@@ -664,6 +719,378 @@ function App() {
     setLoading(false);
     setMessage(result.resolutionNote || `Ingredient search completed for ${item.name.trim()}`);
     return nextItems;
+  }
+
+  async function handleFetchReferences(finding, index) {
+    if (!patient || !finding.left || !finding.right) return;
+
+    const key = finding.signal || `${finding.left}-${finding.right}`;
+    setLoadingReferences((prev) => ({ ...prev, [key]: true }));
+    setMessage(`Fetching references for ${finding.signal}...`);
+
+    try {
+      const SUPABASE_URL = supabaseUrl;
+      const SUPABASE_ANON_KEY = supabaseAnonKey;
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/review-ddi`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          mode: "references",
+          patientCode: patient.patient_code,
+          pair: {
+            left: finding.left,
+            right: finding.right,
+            leftSource: finding.leftSource || finding.left,
+            rightSource: finding.rightSource || finding.right,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        throw new Error(errText || `Failed to fetch references (HTTP ${response.status})`);
+      }
+
+      const data = await response.json();
+      const fetchedEvidence = data?.evidence || [];
+
+      setReviewFindings((prevFindings) =>
+        prevFindings.map((f, i) => (i === index ? { ...f, evidence: fetchedEvidence } : f))
+      );
+      setMessage(`References loaded for ${finding.signal}`);
+    } catch (error) {
+      console.error(error);
+      setMessage(`Error fetching references: ${error.message || error}`);
+    } finally {
+      setLoadingReferences((prev) => ({ ...prev, [key]: false }));
+    }
+  }
+
+  async function handleFetchAllergyReferences(finding, index) {
+    if (!patient || !finding.drug || !finding.allergen) return;
+
+    const key = finding.signal || `${finding.drug}-${finding.allergen}`;
+    setLoadingAllergyReferences((prev) => ({ ...prev, [key]: true }));
+    setMessage(`Fetching allergy references for ${finding.signal}...`);
+
+    try {
+      const SUPABASE_URL = supabaseUrl;
+      const SUPABASE_ANON_KEY = supabaseAnonKey;
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/review-allergy`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          mode: "references",
+          pair: {
+            drug: finding.drug,
+            allergen: finding.allergen,
+            drugSource: finding.drugSource || finding.drug,
+            allergenSource: finding.allergenSource || finding.allergen,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        throw new Error(errText || `Failed to fetch allergy references (HTTP ${response.status})`);
+      }
+
+      const data = await response.json();
+      const fetchedEvidence = data?.evidence || [];
+      setAllergyFindings((prev) =>
+        prev.map((f, i) => (i === index ? { ...f, evidence: fetchedEvidence } : f))
+      );
+      setMessage(`Allergy references loaded for ${finding.signal}`);
+    } catch (error) {
+      console.error(error);
+      setMessage(`Error fetching allergy references: ${error.message || error}`);
+    } finally {
+      setLoadingAllergyReferences((prev) => ({ ...prev, [key]: false }));
+    }
+  }
+
+  async function handleFetchDiseaseReferences(finding, index) {
+    if (!patient || !finding.drug || !finding.disease) return;
+
+    const key = finding.signal || `${finding.drug}-${finding.disease}`;
+    setLoadingDiseaseReferences((prev) => ({ ...prev, [key]: true }));
+    setMessage(`Fetching disease references for ${finding.signal}...`);
+
+    try {
+      const SUPABASE_URL = supabaseUrl;
+      const SUPABASE_ANON_KEY = supabaseAnonKey;
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/review-disease`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          mode: "references",
+          pair: {
+            drug: finding.drug,
+            disease: finding.disease,
+            drugSource: finding.drugSource || finding.drug,
+            diseaseSource: finding.diseaseSource || finding.disease,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        throw new Error(errText || `Failed to fetch disease references (HTTP ${response.status})`);
+      }
+
+      const data = await response.json();
+      const fetchedEvidence = data?.evidence || [];
+      setDiseaseFindings((prev) =>
+        prev.map((f, i) => (i === index ? { ...f, evidence: fetchedEvidence } : f))
+      );
+      setMessage(`Disease references loaded for ${finding.signal}`);
+    } catch (error) {
+      console.error(error);
+      setMessage(`Error fetching disease references: ${error.message || error}`);
+    } finally {
+      setLoadingDiseaseReferences((prev) => ({ ...prev, [key]: false }));
+    }
+  }
+
+  async function runAllergyReview() {
+    if (!patient) {
+      setMessage("Fetch a patient before running allergy review.");
+      return;
+    }
+
+    const resolvedItems = await resolvePrescriptionIngredients();
+    const proposed = resolvedItems
+      .filter((item) => item.name.trim())
+      .map((item) => ({
+        ...item,
+        ingredient: item.ingredient || fallbackIngredient(item.name),
+      }));
+
+    if (proposed.length === 0) {
+      setMessage("Enter at least one drug before running allergy review.");
+      return;
+    }
+
+    setLoadingAllergyReview(true);
+    setMessage("Running the Drug-to-Allergy review agent...");
+
+    try {
+      const SUPABASE_URL = supabaseUrl;
+      const SUPABASE_ANON_KEY = supabaseAnonKey;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
+      let allergyResponse;
+      try {
+        allergyResponse = await fetch(`${SUPABASE_URL}/functions/v1/review-allergy`, {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+            "apikey": SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            patientCode: patient.patient_code,
+            proposedMedications: proposed.map((item) => ({
+              name: item.name,
+              ingredient: item.ingredient,
+              dose: item.dose,
+              unit: item.unit,
+              route: item.route,
+              frequency: item.frequency,
+            })),
+          }),
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (!allergyResponse.ok) {
+        const errText = await allergyResponse.text().catch(() => "");
+        let serverMsg = `Allergy review failed (HTTP ${allergyResponse.status})`;
+        try { const parsed = JSON.parse(errText); serverMsg = parsed?.error || parsed?.message || serverMsg; } catch (_) {}
+        throw new Error(serverMsg);
+      }
+
+      const data = await allergyResponse.json();
+
+      const finalFindings = Array.isArray(data?.findings) && data.findings.length > 0
+        ? data.findings.map((finding) => ({
+            type: finding.type || "Drug-Allergy",
+            severity: finding.severity || "low",
+            signal: finding.signal || "Allergy review result",
+            detail: finding.detail || "No detail returned.",
+            action: finding.action || "Review the allergy evidence.",
+            evidence: finding.evidence || [],
+            drug: finding.drug,
+            allergen: finding.allergen,
+            drugSource: finding.drugSource,
+            allergenSource: finding.allergenSource,
+          }))
+        : [
+            {
+              type: "Drug-Allergy",
+              severity: "none",
+              signal: "No allergy interactions identified",
+              detail: data?.clinicalSummary || "The allergy review agent found no clinically significant drug-allergy cross-reactivities for the reviewed medications.",
+              action: "No clinical action required for allergy interactions.",
+              evidence: [],
+            },
+          ];
+
+      setAllergyFindings(finalFindings);
+      setAllergyReviewCompleted(true);
+      setLoadingAllergyReview(false);
+      setMessage(`Allergy review completed: ${finalFindings.length} finding(s)`);
+    } catch (error) {
+      setLoadingAllergyReview(false);
+      let errMsg = "The allergy review agent could not complete the review.";
+      if (error?.name === "AbortError") {
+        errMsg = "The allergy review timed out. Please try again.";
+      } else if (error?.message) {
+        errMsg = error.message;
+      }
+      setMessage(errMsg);
+      setAllergyFindings([
+        makeFinding(
+          "Drug-Allergy",
+          "Medium",
+          "Allergy review unavailable",
+          errMsg,
+          "Retry the review or manually verify medications against the patient's allergy history."
+        ),
+      ]);
+    }
+  }
+
+  async function runDiseaseReview() {
+    if (!patient) {
+      setMessage("Fetch a patient before running disease review.");
+      return;
+    }
+
+    const resolvedItems = await resolvePrescriptionIngredients();
+    const proposed = resolvedItems
+      .filter((item) => item.name.trim())
+      .map((item) => ({
+        ...item,
+        ingredient: item.ingredient || fallbackIngredient(item.name),
+      }));
+
+    if (proposed.length === 0) {
+      setMessage("Enter at least one drug before running disease review.");
+      return;
+    }
+
+    setLoadingDiseaseReview(true);
+    setMessage("Running the Drug-to-Disease review agent...");
+
+    try {
+      const SUPABASE_URL = supabaseUrl;
+      const SUPABASE_ANON_KEY = supabaseAnonKey;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
+      let diseaseResponse;
+      try {
+        diseaseResponse = await fetch(`${SUPABASE_URL}/functions/v1/review-disease`, {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+            "apikey": SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            patientCode: patient.patient_code,
+            proposedMedications: proposed.map((item) => ({
+              name: item.name,
+              ingredient: item.ingredient,
+              dose: item.dose,
+              unit: item.unit,
+              route: item.route,
+              frequency: item.frequency,
+            })),
+          }),
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (!diseaseResponse.ok) {
+        const errText = await diseaseResponse.text().catch(() => "");
+        let serverMsg = `Disease review failed (HTTP ${diseaseResponse.status})`;
+        try { const parsed = JSON.parse(errText); serverMsg = parsed?.error || parsed?.message || serverMsg; } catch (_) {}
+        throw new Error(serverMsg);
+      }
+
+      const data = await diseaseResponse.json();
+
+      const finalFindings = Array.isArray(data?.findings) && data.findings.length > 0
+        ? data.findings.map((finding) => ({
+            type: finding.type || "Drug-Disease",
+            severity: finding.severity || "low",
+            signal: finding.signal || "Disease review result",
+            detail: finding.detail || "No detail returned.",
+            action: finding.action || "Review the disease evidence.",
+            evidence: finding.evidence || [],
+            drug: finding.drug,
+            disease: finding.disease,
+            drugSource: finding.drugSource,
+            diseaseSource: finding.diseaseSource,
+          }))
+        : [
+            {
+              type: "Drug-Disease",
+              severity: "none",
+              signal: "No drug-disease contraindications identified",
+              detail: data?.clinicalSummary || "The disease review agent found no clinically significant drug-disease contraindications or precautions for the reviewed medications.",
+              action: "No clinical action required for drug-disease contraindications.",
+              evidence: [],
+            },
+          ];
+
+      setDiseaseFindings(finalFindings);
+      setDiseaseReviewCompleted(true);
+      setLoadingDiseaseReview(false);
+      setMessage(`Disease review completed: ${finalFindings.length} finding(s)`);
+    } catch (error) {
+      setLoadingDiseaseReview(false);
+      let errMsg = "The disease review agent could not complete the review.";
+      if (error?.name === "AbortError") {
+        errMsg = "The disease review timed out. Please try again.";
+      } else if (error?.message) {
+        errMsg = error.message;
+      }
+      setMessage(errMsg);
+      setDiseaseFindings([
+        makeFinding(
+          "Drug-Disease",
+          "Medium",
+          "Disease review unavailable",
+          errMsg,
+          "Retry the review or manually verify medications against the patient's condition and lab history."
+        ),
+      ]);
+    }
   }
 
   async function runInteractionReview() {
@@ -697,8 +1124,8 @@ function App() {
     try {
       // Use raw fetch with a 120s timeout — supabase.functions.invoke() has a
       // shorter default timeout that can expire during AI-powered DDI searches.
-      const SUPABASE_URL = "https://usiezbetbsziwsqrqwmc.supabase.co";
-      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzaWV6YmV0YnN6aXdzcXJxd21jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMDM2ODgsImV4cCI6MjA5NDc3OTY4OH0.ahXzNPXRYEJKghaz0uNIuY8n_4q4uSuUgL1xoJRuOoc";
+      const SUPABASE_URL = supabaseUrl;
+      const SUPABASE_ANON_KEY = supabaseAnonKey;
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120_000);
@@ -739,16 +1166,20 @@ function App() {
       const data = await ddiResponse.json();
 
       finalFindings = Array.isArray(data?.findings) && data.findings.length > 0
-        ? data.findings.map((finding) =>
-            makeFinding(
+        ? data.findings.map((finding) => ({
+            ...makeFinding(
               finding.type || "Drug-Drug",
               finding.severity || "Low",
               finding.signal || "DDI review result",
               finding.detail || "No detail returned by the DDI agent.",
               finding.action || "Review the interaction evidence before saving.",
               finding.evidence || []
-            )
-          )
+            ),
+            left: finding.left,
+            right: finding.right,
+            leftSource: finding.leftSource,
+            rightSource: finding.rightSource,
+          }))
         : [
              makeFinding(
                "Drug-Drug",
@@ -774,7 +1205,7 @@ function App() {
           "Medium",
           "DDI review unavailable",
           errMsg,
-          "Retry the review. If the error persists, manually verify all medication combinations using trusted clinical sources (DrugBank, PubMed, Medscape, Drugs.com, Empathia AI)."
+          "Retry the review. If the error persists, manually verify all medication combinations using trusted clinical sources (PubMed, Medscape, Drugs.com, Empathia AI)."
         ),
       ]);
       return;
@@ -873,6 +1304,20 @@ function App() {
             setLookupCode={setLookupCode}
             setPrescription={setPrescription}
             setPrescriptionItems={setPrescriptionItems}
+            loadingReferences={loadingReferences}
+            handleFetchReferences={handleFetchReferences}
+            allergyFindings={allergyFindings}
+            allergyReviewCompleted={allergyReviewCompleted}
+            loadingAllergyReview={loadingAllergyReview}
+            loadingAllergyReferences={loadingAllergyReferences}
+            handleFetchAllergyReferences={handleFetchAllergyReferences}
+            runAllergyReview={runAllergyReview}
+            diseaseFindings={diseaseFindings}
+            diseaseReviewCompleted={diseaseReviewCompleted}
+            loadingDiseaseReview={loadingDiseaseReview}
+            loadingDiseaseReferences={loadingDiseaseReferences}
+            handleFetchDiseaseReferences={handleFetchDiseaseReferences}
+            runDiseaseReview={runDiseaseReview}
           />
         )}
 
@@ -963,6 +1408,20 @@ function PrescriptionPage(props) {
     savePrescription,
     setLookupCode,
     setPrescriptionItems,
+    loadingReferences,
+    handleFetchReferences,
+    allergyFindings,
+    allergyReviewCompleted,
+    loadingAllergyReview,
+    loadingAllergyReferences,
+    handleFetchAllergyReferences,
+    runAllergyReview,
+    diseaseFindings,
+    diseaseReviewCompleted,
+    loadingDiseaseReview,
+    loadingDiseaseReferences,
+    handleFetchDiseaseReferences,
+    runDiseaseReview,
   } = props;
 
   const updateItem = (id, field, value) => {
@@ -1162,7 +1621,25 @@ function PrescriptionPage(props) {
                   disabled={!patient || loading}
                 >
                   <Microscope size={17} />
-                  Run interaction review
+                  Run DDI Review
+                </button>
+                <button
+                  className="allergyReviewButton wideButton"
+                  type="button"
+                  onClick={runAllergyReview}
+                  disabled={!patient || loading || loadingAllergyReview}
+                >
+                  <ShieldCheck size={17} />
+                  {loadingAllergyReview ? "Running Allergy Check..." : "Run Allergy Check"}
+                </button>
+                <button
+                  className="diseaseReviewButton wideButton"
+                  type="button"
+                  onClick={runDiseaseReview}
+                  disabled={!patient || loading || loadingDiseaseReview}
+                >
+                  <HeartPulse size={17} />
+                  {loadingDiseaseReview ? "Running Disease Check..." : "Run Disease Check"}
                 </button>
                 <button
                   className="primaryButton"
@@ -1180,52 +1657,110 @@ function PrescriptionPage(props) {
               )}
               {reviewFindings.length > 0 && (
                 <div className="inlineReport">
-                  {reviewFindings.map((finding, index) => (
-                    <article className="findingCard compactFinding" key={`${finding.type}-${index}`}>
-                      <div className={`severityBadge ${finding.severity.toLowerCase()}`}>
-                        {finding.severity.toLowerCase() === "none" ? (
-                          <ShieldCheck size={16} />
-                        ) : (
-                          <AlertTriangle size={16} />
-                        )}
-                        {finding.severity}
-                      </div>
-                      <div className="findingBody">
-                        <span>{finding.type}</span>
-                        <h3>{finding.signal}</h3>
-                        <p>{finding.detail}</p>
-                        <strong>{finding.action}</strong>
-                        {finding.evidence && finding.evidence.length > 0 && (
-                          <div className="findingEvidence">
-                            <span className="evidenceTitle">Clinical References:</span>
-                            <ul className="evidenceList">
-                              {finding.evidence.map((ev, evIdx) => {
-                                const url = ev.url || ev.websiteUrl;
-                                const source = ev.source || ev.severityLabel || (url ? new URL(url).hostname.replace("www.", "") : "Reference");
-                                const title = ev.title || ev.description || "Interaction source record";
-                                if (url) {
-                                  return (
-                                    <li key={evIdx}>
-                                      <a href={url} target="_blank" rel="noopener noreferrer" className="evidenceLink">
-                                        {source}: {title.slice(0, 80)}{title.length > 80 ? "..." : ""}
-                                      </a>
-                                    </li>
-                                  );
-                                }
-                                return (
-                                  <li key={evIdx}>
-                                    <span className="evidenceText">
-                                      {source}: {title}
-                                    </span>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </article>
-                  ))}
+                  {reviewFindings.map((finding, index) => {
+                    const parsed = parseFindingDetail(finding);
+                    return (
+                      <article className="findingCard compactFinding" key={`${finding.type}-${index}`}>
+                        <div className={`severityBadge ${finding.severity.toLowerCase()}`}>
+                          {finding.severity.toLowerCase() === "none" ? (
+                            <ShieldCheck size={16} />
+                          ) : (
+                            <AlertTriangle size={16} />
+                          )}
+                          {finding.severity}
+                        </div>
+                        <div className="findingBody">
+                          <span>{finding.type}</span>
+                          <h3>{finding.signal}</h3>
+                          {parsed.reasoning && (
+                            <div className="findingReasoning">
+                              <strong>Clinical Reasoning</strong>
+                              <p>{parsed.reasoning}</p>
+                            </div>
+                          )}
+                          <p>{parsed.detail}</p>
+                          <strong>{finding.action}</strong>
+
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Drug-to-Allergy Findings */}
+              {allergyFindings.length > 0 && (
+                <div className="inlineReport allergyReport">
+                  <div className="allergyReportHeader">
+                    <ShieldCheck size={16} />
+                    <span>Drug-to-Allergy Analysis</span>
+                  </div>
+                  {allergyFindings.map((finding, index) => {
+                    const parsed = parseFindingDetail(finding);
+                    return (
+                      <article className="findingCard compactFinding allergyFindingCard" key={`allergy-${finding.signal}-${index}`}>
+                        <div className={`severityBadge allergy-${finding.severity.toLowerCase()}`}>
+                          {finding.severity.toLowerCase() === "none" ? (
+                            <ShieldCheck size={16} />
+                          ) : (
+                            <AlertTriangle size={16} />
+                          )}
+                          {finding.severity}
+                        </div>
+                        <div className="findingBody">
+                          <span>{finding.type}</span>
+                          <h3>{finding.signal}</h3>
+                          {parsed.reasoning && (
+                            <div className="findingReasoning">
+                              <strong>Clinical Reasoning</strong>
+                              <p>{parsed.reasoning}</p>
+                            </div>
+                          )}
+                          <p>{parsed.detail}</p>
+                          <strong>{finding.action}</strong>
+
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Drug-to-Disease Findings */}
+              {diseaseFindings.length > 0 && (
+                <div className="inlineReport diseaseReport">
+                  <div className="diseaseReportHeader">
+                    <HeartPulse size={16} />
+                    <span>Drug-to-Disease Analysis</span>
+                  </div>
+                  {diseaseFindings.map((finding, index) => {
+                    const parsed = parseFindingDetail(finding);
+                    return (
+                      <article className="findingCard compactFinding diseaseFindingCard" key={`disease-${finding.signal}-${index}`}>
+                        <div className={`severityBadge disease-${finding.severity.toLowerCase()}`}>
+                          {finding.severity.toLowerCase() === "none" ? (
+                            <HeartPulse size={16} />
+                          ) : (
+                            <AlertTriangle size={16} />
+                          )}
+                          {finding.severity}
+                        </div>
+                        <div className="findingBody">
+                          <span>{finding.type}</span>
+                          <h3>{finding.signal}</h3>
+                          {parsed.reasoning && (
+                            <div className="findingReasoning" style={{ borderLeftColor: "var(--purple, #a855f7)", background: "#faf5ff" }}>
+                              <strong style={{ color: "var(--purple, #a855f7)" }}>Clinical Reasoning</strong>
+                              <p>{parsed.reasoning}</p>
+                            </div>
+                          )}
+                          <p>{parsed.detail}</p>
+                          <strong>{finding.action}</strong>
+
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </form>
@@ -1700,24 +2235,32 @@ function ReportsPage({ patient, activePage }) {
 
                 <div className="findingsList" style={{ marginTop: "20px" }}>
                   {selectedReport.interaction_findings && selectedReport.interaction_findings.length > 0 ? (
-                    selectedReport.interaction_findings.map((finding, idx) => (
-                      <article className="findingDetailCard" key={finding.id || idx}>
-                        <div className="findingDetailHeader">
-                          <div className={`severityBadge ${(finding.severity || "low").toLowerCase()}`}>
-                            {(finding.severity || "").toLowerCase() === "none" ? (
-                              <ShieldCheck size={15} />
-                            ) : (
-                              <AlertTriangle size={15} />
-                            )}
-                            {finding.severity ? (finding.severity.charAt(0).toUpperCase() + finding.severity.slice(1)) : "Low"}
+                    selectedReport.interaction_findings.map((finding, idx) => {
+                      const parsed = parseFindingDetail(finding);
+                      return (
+                        <article className="findingDetailCard" key={finding.id || idx}>
+                          <div className="findingDetailHeader">
+                            <div className={`severityBadge ${(finding.severity || "low").toLowerCase()}`}>
+                              {(finding.severity || "").toLowerCase() === "none" ? (
+                                <ShieldCheck size={15} />
+                              ) : (
+                                <AlertTriangle size={15} />
+                              )}
+                              {finding.severity ? (finding.severity.charAt(0).toUpperCase() + finding.severity.slice(1)) : "Low"}
+                            </div>
+                            <h3 className="findingDetailTitle">{finding.signal}</h3>
                           </div>
-                          <h3 className="findingDetailTitle">{finding.signal}</h3>
-                        </div>
-                        <div className="findingDetailBody">
-                          <div className="findingSection">
-                            <span className="findingSectionLabel">Clinical Assessment</span>
-                            <p className="findingExplanation">{finding.explanation}</p>
-                          </div>
+                          <div className="findingDetailBody">
+                            <div className="findingSection">
+                              <span className="findingSectionLabel">Clinical Assessment</span>
+                              {parsed.reasoning && (
+                                <div className="findingReasoning">
+                                  <strong>Clinical Reasoning</strong>
+                                  <p>{parsed.reasoning}</p>
+                                </div>
+                              )}
+                              <p className="findingExplanation">{parsed.detail}</p>
+                            </div>
                           <div className="findingSection">
                             <span className="findingSectionLabel">Action Plan / Recommendation</span>
                             <p className="findingRecommendation">{finding.recommendation}</p>
@@ -1752,7 +2295,8 @@ function ReportsPage({ patient, activePage }) {
                           )}
                         </div>
                       </article>
-                    ))
+                    );
+                  })
                   ) : (
                     <div className="reportsEmptyState" style={{ padding: "30px 20px" }}>
                       <AlertTriangle size={32} style={{ color: "var(--muted)" }} />

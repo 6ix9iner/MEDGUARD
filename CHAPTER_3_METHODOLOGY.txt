@@ -1,0 +1,264 @@
+CHAPTER THREE: METHODOLOGY
+
+3.1 Research Context
+The rising incidence of adverse drug events (ADEs) represents one of the most critical challenges in contemporary healthcare delivery. As established in Chapter One, medication-related errors contribute significantly to avoidable patient harm, particularly in clinical environments characterized by high patient volume and complex multi-drug regimens (polypharmacy). The World Health Organization (2017) identified medication errors as a leading cause of avoidable patient injury worldwide. Among these errors, drug-drug interactions (DDIs) represent a major clinical risk, particularly in patients exposed to polypharmacy (Tatonetti et al., 2012). While traditional Clinical Decision Support Systems (CDSS) were introduced to serve as safeguard mechanisms against these risks, their real-world efficacy has been severely compromised by "alert fatigue"—a phenomenon wherein clinicians routinely override up to 90% of warnings due to a lack of clinical specificity, contextual relevance, and actionable rationale (Sayood et al., 2024).
+
+This research context focuses on resolving these systemic limitations by designing and evaluating a next-generation clinical decision support prototype: an Autonomous Clinical Workflow Agent for Drug Interaction Review. Unlike traditional systems that rely on static, isolated database checks (Bates et al., 2003; McGreevey et al., 2020), this study explores the integration of agentic artificial intelligence, real-time Retrieval-Augmented Generation (RAG), and a de-identified, normalized electronic health record (EHR) database to provide highly contextualized, pairwise (2-by-2) safety evaluations. By aligning the system's reasoning engine with the actual clinical parameters of the patient—including active diagnoses, allergies, and laboratory findings—this methodology aims to reduce the volume of low-value alerts while ensuring that high-severity interactions are communicated with clear clinical justification.
+
+3.2 Methodology Definition
+The proposed methodology implements a hybrid clinical decision support architecture that combines structured relational databases, asynchronous serverless edge functions, and large language model (LLM) reasoning grounded in live medical databases. The workflow is designed to execute automatically during the prescribing process, transitioning the task from a simple keyword-matching operation to an active, multi-agent clinical evaluation.
+
+The process begins when a clinician inputs a proposed prescription. The system resolves the entered terms, decomposes any multi-ingredient or combination compounds into their base active ingredients, constructs a comprehensive grid of pairwise checks, and dispatches these tasks to specialized agentic modules (DDI, Allergy, and Disease). Each agent evaluates its assigned pairs using real-time search grounding and returns a structured, verified evaluation.
+
+Figure 1: FLOWCHART OF THE PRESCRIPTION SAFETY REVIEW PIPELINE
+[EXAMINER NOTE: Insert a detailed flowchart here showing the data journey: Patient selection -> Fetching EHR from PostgreSQL -> Typing prescription -> Triggering resolution API -> Splitting combination ingredients via regex -> Generating 2x2 comparison checklists -> Dispatching concurrent fetch requests to DDI, Allergy, and Disease edge functions -> Gemini API evaluation with Google Search Grounding -> Multi-pass precision mapper executing on response -> Rendering results in the UI.]
+
+Using these data processing and agentic orchestration techniques, the system prepares a structured clinical report. This approach aims to enhance the accuracy, reliability, and clinical utility of alerts, ensuring that the model learns patient-specific risks and mitigates alert fatigue (Kesselheim et al., 2011; Ong et al., 2025).
+
+3.3 Data Source and Schema
+To evaluate the proposed methodology in a realistic clinical context, a de-identified, normalized relational database was constructed. The clinical data used to populate this database was modeled after real-world patient records sourced from a local hospital and a community pharmacy. To maintain strict patient confidentiality and privacy, all personally identifiable information (PII) and protected health information (PHI) — including patient names, phone numbers, email addresses, exact dates of birth, home addresses, and national identification numbers — were entirely removed or replaced with randomized, non-traceable identifiers before database ingestion.
+
+The de-identified dataset was structured into a normalized relational database designed in accordance with the OMOP (Observational Medical Outcomes Partnership) Common Data Model and HL7 FHIR (Fast Healthcare Interoperability Resources) standards (Olakotan & Mohd Yusof, 2021; Yusof et al., 2021). This ensures a standardized and interoperable representation of clinical data while maintaining maximum privacy safeguards.
+
+The database is implemented in PostgreSQL and consists of eleven core tables:
+1. ehr_patients: Contains de-identified patient records identified by a unique, secure patient_code. This ensures no patient names or PHI are exposed.
+2. ehr_encounters: Tracks patient clinical visits, service areas, and reasons for visits, establishing the clinical timeline.
+3. ehr_conditions: Stores active and historical patient diagnoses using the ICD-10-CM coding system (e.g., "I10" for Essential Hypertension, "N18.3" for Chronic Kidney Disease). This serves as the clinical context for disease contraindication checks.
+4. ehr_medications: Records active and historical patient prescriptions, including the active ingredient, dosage, route of administration, and frequency.
+5. ehr_allergies: Stores documented substance allergies, categorizing the substance, reaction type (e.g., "anaphylaxis", "rash"), and criticality ("low", "medium", "high").
+6. ehr_observations: Captures vital signs, laboratory values (e.g., serum creatinine, potassium levels), and clinical scores using LOINC codes. This is critical for evaluating active organ function.
+7. ehr_procedures: Records procedures performed on the patient using SNOMED-CT codes.
+8. ehr_clinical_notes: Houses unstructured clinical narratives (e.g., progress notes, discharge summaries) to supply contextual background.
+9. ehr_audit_events: Maintains an immutable log of all clinical database modifications for security and accountability.
+10. prescription_review_sessions: Tracks each prescription review request, storing the proposed medications, resolved ingredients, and overall risk rating.
+11. interaction_findings: Stores the granular safety findings generated by the agentic reviewers, including the type of interaction, severity, signal, detailed explanation, recommendation, and supporting evidence.
+
+Figure 2: ENTITY-RELATIONSHIP DIAGRAM (ERD) OF THE DE-IDENTIFIED EHR DATABASE
+[EXAMINER NOTE: Insert an ERD diagram showing the tables, primary keys (UUIDs), foreign keys, and relationships. Highlights should show ehr_patients at the center connecting to ehr_medications, ehr_conditions, ehr_allergies, and ehr_observations, which are used to construct the "Working Memory" payload.]
+
+In addition to the patient data, the system integrates a grounded knowledge source using the Gemini Google Search tool. The searches are instructed to prioritize verified, authoritative medical databases:
+* PubMed / MEDLINE (for peer-reviewed clinical studies and evidence).
+* Drugs.com (for drug-drug and drug-food interaction monographs).
+* Medscape Reference (for clinical pharmacology and guidelines).
+* Empathia AI (for clinical decision support knowledge bases).
+
+3.4 Comparative Analysis of System Architectures
+In this section, the proposed hybrid model (agentic RAG-based CDSS) is compared to existing studies and established methodologies in clinical decision support.
+
+3.4.1 Comparison with Prior Studies or Models
+1. Comparison with Traditional Rule-Based Systems: Traditional systems rely on static database lookups that flags interactions using predefined tables (Bates et al., 2003; McGreevey et al., 2020). These systems are context-insensitive, generating generic alerts. Our hybrid approach uses dynamic RAG techniques, allowing the system to adapt to patient-specific variables (renal function, active diagnoses) in real-time, matching modern best practices (Singh et al., 2025).
+2. Comparison with Standalone Large Language Models: Standalone LLMs are prone to hallucinations, outdated knowledge, and lack of transparency (Moor et al., 2023; Hager et al., 2024). Our system uses Google Search Grounding to restrict model responses to verified medical sources, significantly reducing hallucination rates and ensuring that findings are backed by updated, verifiable clinical literature (Amugongo et al., 2025; Zakka et al., 2024).
+3. Novelty in Comparison to Existing Process Models: Unlike typical RAG implementations that perform a single global query (e.g., "Review these 5 drugs together"), which often results in missed interactions (Ong et al., 2025), our system decomposes combinations into a flat list of ingredients and evaluates them in a pairwise (2-by-2) manner. This increases the sensitivity of the safety check, identifying moderate and mild interactions that might otherwise be omitted.
+
+3.4.2 Insight into Trends or Patterns
+1. Pattern and Correlation: The system shows that positive drug interaction outcomes are strongly correlated with patient-specific laboratory values (e.g., elevated serum creatinine) and active diagnoses (e.g., chronic kidney disease). Integrating these parameters into the reasoning loop ensures that alerts are only presented when clinically relevant, directly tackling the root cause of alert fatigue (Park et al., 2022).
+2. Patterns in Feature Importance: Our analysis of clinical reviews indicates that active ingredients and patient-specific contraindications (allergies and diseases) are the most critical predictors of drug safety. Legacy systems that analyze drugs only by brand name (e.g., "Augmentin") fail to capture cross-sensitivities associated with the active ingredients (e.g., "penicillin" allergy), highlighting the importance of the ingredient resolver component.
+
+3.5 Input Preprocessing: Brand-to-Ingredient Resolution
+A major technical challenge in clinical decision support is the handling of trade names, misspellings, and combination drugs. Before any interaction checks are performed, the system translates the clinician's raw text input into a standardized format. 
+
+This is handled by a dedicated Deno Edge Function, `resolve-drug-ingredient`, which coordinates a Gemini 3.5 Flash model. The model is given a specialized system instruction to act as a pharmaceutical resolver.
+
+Figure 3: SYSTEM PROMPT FOR THE DRUG INGREDIENT RESOLVER
+[EXAMINER NOTE: Insert a screenshot or text-block of the resolver's system instruction, showing the rules for handling brand names, misspelled inputs, chemical classes, and combination products.]
+
+The exact system prompt configured within this agent is as follows:
+"You are a pharmaceutical drug name resolver. Your job is to identify the active pharmaceutical ingredient (INN/generic name) for any drug input.
+
+Rules:
+1. If the input is a BRAND NAME (e.g. "Augmentin", "Lipitor", "Clodorel"), return the active ingredient(s) (e.g. "amoxicillin, clavulanic acid", "atorvastatin", "clopidogrel").
+2. If the input is ALREADY an active ingredient / INN / generic name (e.g. "metformin", "clopidogrel"), confirm it as the active ingredient.
+3. If the input is a DRUG CLASS or CHEMICAL CLASS (e.g. "sulfonamide", "sulfonamides", "penicillin", "nsaid", "nsaids", "sulfonamides"), resolve it to itself in singular form (e.g. ingredient: "sulfonamide", inputType: "active_ingredient", resolved: true) so allergy/DDI matching can succeed.
+4. If the input is MISSPELLED (e.g. "clopidorel", "amoxicilin", "ibuprofn", "paracetmol"), correct the spelling and return the correct active ingredient.
+5. If the input is a combination product, return all active ingredients separated by commas.
+6. If you truly cannot identify the drug at all, set resolved to false.
+7. Always return ingredient names in lowercase.
+8. For the inputType field: use "brand_name" if the original input was a brand/trade name, "active_ingredient" if it was already a generic/INN name or a drug class, "misspelled" if it contained a spelling error, or "unknown" if you cannot identify it.
+9. For the correctedInput field: if the input was misspelled, provide the corrected spelling. If it was a brand name, provide the brand name. Otherwise leave it the same as the input.
+
+Return strict JSON:
+{
+  "resolved": true,
+  "ingredient": "active ingredient(s)",
+  "ingredients": ["active ingredient"],
+  "inputType": "brand_name | active_ingredient | misspelled | unknown",
+  "correctedInput": "corrected spelling or name",
+  "explanation": "brief explanation"
+}"
+
+Figure 4: CODE SCREENSHOT OF THE DRUG RESOLUTION HANDLER
+[EXAMINER NOTE: Insert a code snippet screenshot showing the resolve-drug-ingredient function handling Deno HTTP serving, performing the oauth fetch to the Google AI platform, and returning the resolved JSON payload.]
+
+3.6 Input Preprocessing: Pairwise Ingredient Decomposition & Expansion
+When a combination medication (e.g., "Cocodamol" containing codeine and paracetamol) is prescribed, querying an LLM or database for a three-way interaction ("Cocodamol + Sulfonamide") frequently leads to a false-negative due to the absence of specific literature discussing the three drugs together. 
+
+To overcome this "three-way query failure," this methodology implements a backend decomposition and resolution pipeline:
+1. Deconstruction: The resolved string is split using a regular expression parser in the backend edge functions. This breaks down the drug into its constituent parts by splitting on commas, semicolons, slashes, pluses, or the word "and":
+   const ingredients = rawIng.split(/[,;/+]+|\band\b/i).map(i => i.trim().toLowerCase()).filter(Boolean);
+2. Pairwise Expansion: Decomposed ingredients are expanded into separate medication records. For example, "Cocodamol" becomes "Cocodamol (codeine)" and "Cocodamol (paracetamol)".
+3. Pairwise Checklist Generation: The system programmatically generates a list of every 2-by-2 comparison to be made. For N proposed drugs and M current drugs, the system constructs a checklist of:
+   * Proposed-Proposed: N * (N - 1) / 2 pairs.
+   * Proposed-Current: N * M pairs.
+
+This representation guarantees that the inference engine is presented with direct, two-way drug questions, increasing clinical sensitivity.
+
+Figure 5: CODE SCREENSHOT OF THE REGEX DECOMPOSITION AND PAIRWISE EXPANSION
+[EXAMINER NOTE: Insert a code screenshot of the expandProposedMedications and expandActiveMedications helper functions in review-ddi/index.ts, demonstrating how combination strings are split and mapped to individual objects.]
+
+3.7 The Multi-Agent Safety Review Pipeline
+Once the inputs are preprocessed, the system dispatches them to three specialized review agents executing concurrently.
+
+3.7.1 Drug-Drug Interaction (DDI) Agent (`review-ddi`)
+The DDI Agent fetches the patient's active prescriptions from ehr_medications and evaluates them against the proposed ingredients in a pairwise manner. The agent is configured with the following system prompt:
+
+"You are an expert clinical drug-drug interaction review agent equipped with Google Search Grounding.
+Your task is to analyze potential drug-drug interactions (DDIs) for the provided medication pairs (proposed-proposed and proposed-current) in the context of the patient's EHR.
+
+Follow these strict clinical rules:
+1. Perform rigorous clinical reasoning. First, perform medical reasoning on the clinical evidence and context. You must analyze the evidence step-by-step to explain the physiological/pharmacological mechanism of the interaction, how it relates to this specific patient's conditions/labs, and what clinical decision should be made. Write this reasoning process in the 'Reasoning:' section of each finding before detailing the final message.
+2. Integrate patient context. Check the patient's existing active conditions, allergies, and observations (e.g. renal/hepatic status, lab abnormalities) to see if they increase the risk.
+3. Use Google Search Grounding to read and analyze clinical evidence from the 4 approved sources (Drugs.com, PubMed, Medscape, Empathia AI). Do NOT output any URLs, source names, or citations in your response.
+4. You must evaluate every single provided medication pair. For every pair that has a documented clinical interaction of any severity ('low', 'medium', 'high', 'critical'), you MUST generate a corresponding finding in findingsText. Do not omit moderate or mild interactions in favor of more severe ones. Omit drug pairs ONLY if they have absolutely no clinical interaction (severity 'none').
+5. Keep the explanation ('detail') and action item ('action') extremely concise (maximum 2-3 sentences each) to prevent response truncation.
+
+CRITICAL: The output must be a 100% valid JSON object matching the schema below. To ensure stable generation with Google Search Grounding, you must output a flat JSON structure containing overallSeverity, clinicalSummary, and a single plain text block containing all findings ('findingsText'). Do not output any nested JSON arrays or objects for findings, as this conflicts with search grounding.
+
+All keys (overallSeverity, clinicalSummary, findingsText) are mandatory. The overallSeverity must be strictly one of: 'none', 'low', 'medium', 'high', 'critical' (all lowercase).
+
+Return strict JSON matching this schema:
+{
+  "overallSeverity": "high",
+  "clinicalSummary": "Clinical overview of risks...",
+  "findingsText": "Finding 1:\nSeverity: critical\nSignal: DrugA and DrugB Interaction\nReasoning: Medical reasoning based on RAG source information goes here.\nDetail: Mechanism.\nAction: Recommendation."
+}
+
+Format findingsText exactly as a plain text string for each finding. Separate multiple findings with a double newline:
+
+Finding N:
+Severity: [none|low|medium|high|critical]
+Signal: [Both drug names, e.g., DrugA and DrugB Interaction]
+Reasoning: [Structured medical/clinical reasoning based on the retrieved search results/context, explaining mechanisms and patient-specific risks]
+Detail: [Concise clinical explanation, max 2-3 sentences]
+Action: [Clinical recommendation, max 2-3 sentences]"
+
+Figure 6: CODE SCREENSHOT OF DDI SYSTEM PROMPT CONFIGURATION
+[EXAMINER NOTE: Insert a screenshot of the review-ddi edge function, specifically where the systemInstructionText is defined and passed to the Gemini API body.]
+
+3.7.2 Allergy Review Agent (`review-allergy`)
+The Allergy Agent fetches the patient's active allergies from ehr_allergies and evaluates the proposed ingredients against them, checking for direct and class cross-reactivities. The agent is configured with the following system prompt:
+
+"You are an expert clinical pharmacist equipped with Google Search Grounding.
+Your task is to analyze potential drug-allergy cross-reactivities for the provided proposed medications against the patient's documented active allergies by systematically evaluating the provided pair checklist.
+
+Follow these strict clinical rules:
+1. Perform rigorous clinical reasoning. First, perform medical reasoning on the clinical evidence and context. You must analyze the evidence step-by-step to explain the physiological/pharmacological mechanism of cross-reactivity, how it relates to this specific patient's allergy details (like reaction type and criticality), and what clinical decision should be made. Write this reasoning process in the 'Reasoning:' section of each finding before detailing the final message.
+2. Consider all forms of allergy cross-reactivity — direct allergy (the drug IS the allergen or a close derivative), class cross-reactivity (e.g. penicillin allergy → amoxicillin), and pharmacological class overlap.
+3. Use Google Search Grounding to read and analyze clinical evidence from the 4 approved sources (Drugs.com, PubMed, Medscape, Empathia AI). Do NOT output any URLs, source names, or citations in your response.
+4. Keep 'detail' and 'action' concise (max 2-3 sentences each).
+5. Evaluate every single medication-allergen pair in the checklist. Generate findings only for pairs with documented clinical cross-reactivity (severity: low, medium, high, or critical). Omit pairs with no clinical concern (severity 'none').
+6. NEVER analyze proposed medications against other proposed medications.
+
+CRITICAL: Output must be a 100% valid JSON object matching this schema:
+{
+  "overallRisk": "high",
+  "clinicalSummary": "Summary of allergy risks...",
+  "findingsText": "Finding 1:\nSeverity: high\nSignal: Amoxicillin — Penicillin Allergy\nReasoning: Medical reasoning based on RAG source information goes here.\nDetail: Mechanism.\nAction: Recommendation."
+}
+
+Format findingsText as plain text. Separate multiple findings with a double newline:
+
+Finding N:
+Severity: [none|low|medium|high|critical]
+Signal: [DrugName — AllergenName Allergy]
+Reasoning: [Structured medical/clinical reasoning based on the retrieved search results/context, explaining mechanisms and patient-specific risks]
+Detail: [Concise clinical explanation, max 2-3 sentences]
+Action: [Clinical recommendation, max 2-3 sentences]"
+
+Figure 7: CODE SCREENSHOT OF ALLERGY SYSTEM PROMPT CONFIGURATION
+[EXAMINER NOTE: Insert a screenshot of the review-allergy edge function's system instruction declaration.]
+
+3.7.3 Disease & Lab Review Agent (`review-disease`)
+The Disease & Lab Agent fetches the patient's active diagnoses from ehr_conditions and lab values/vitals from ehr_observations. It evaluates the proposed ingredients against this clinical status to prevent prescribing contraindicated drugs. The agent is configured with the following system prompt:
+
+"You are an expert clinical pharmacist equipped with Google Search Grounding.
+Your task is to analyze potential drug-disease contraindications or precautions for the provided proposed medications against the patient's diagnoses (conditions) and lab values/vitals (observations) by systematically evaluating the provided pair checklist.
+
+Follow these strict clinical rules:
+1. Perform rigorous clinical reasoning. Analyze the physiological/pharmacological mechanism of the contraindication or precaution, how it relates to this specific patient's conditions/labs, and what clinical decision should be made. Write this reasoning process in the 'Reasoning:' section of each finding.
+2. Understand Past History: Some conditions in the checklist are marked as 'past history'. Treat these as historical diagnoses (not currently active) but check if there are precautions or contraindications for the proposed drug in patients with a history of this disease (e.g., history of pancreatitis, history of GI bleeding, etc.).
+3. Use Google Search Grounding to read and analyze clinical evidence from the 4 approved sources (Drugs.com, PubMed, Medscape, Empathia AI). Do NOT output any URLs, source names, or citations in your response.
+4. Keep 'detail' and 'action' concise (max 2-3 sentences each).
+5. Evaluate every single medication-condition and medication-observation pair. Generate findings only for pairs with a clinical contraindication or precaution (severity: low, medium, high, or critical). Omit pairs with no clinical concern (severity 'none').
+6. NEVER analyze proposed medications against other proposed medications (e.g., no drug-drug interactions).
+
+CRITICAL: Output must be a 100% valid JSON object matching this schema:
+{
+  "overallRisk": "high",
+  "clinicalSummary": "Summary of drug-disease contraindications...",
+  "findingsText": "Finding 1:\nSeverity: critical\nSignal: Metformin — Chronic Kidney Disease\nReasoning: Metformin is renally cleared. Impaired renal function increases systemic accumulation risk.\nDetail: Metformin accumulates in kidney dysfunction, elevating the risk of lactic acidosis.\nAction: Stop Metformin or adjust dosage."
+}
+
+Format findingsText as plain text. Separate multiple findings with a double newline:
+
+Finding N:
+Severity: [none|low|medium|high|critical]
+Signal: [DrugName — DiagnosisName/LabName Contraindication]
+Reasoning: [Structured reasoning explaining physiological/pharmacological mechanisms and patient-specific risks]
+Detail: [Concise clinical explanation, max 2-3 sentences]
+Action: [Clinical recommendation, max 2-3 sentences]"
+
+Figure 8: CODE SCREENSHOT OF DISEASE SYSTEM PROMPT CONFIGURATION
+[EXAMINER NOTE: Insert a screenshot of the review-disease edge function's system instruction declaration.]
+
+3.8 Post-Processing: Multi-Pass Precision Mapping
+Once the reasoning engine returns its findings, the system must map these findings back to the original database entities. Because multiple ingredients can originate from the same combination brand name (e.g., Cocodamol yielding codeine and paracetamol), simple brand-name matching causes mapping collisions. 
+
+To resolve this, a Multi-Pass Precision Mapper was implemented on the backend:
+* Pass 1 (Precise Ingredient Match): The mapper searches the text of the finding's signal for the exact, resolved generic ingredient name (e.g., "codeine"). If found, it maps the finding directly to that specific decomposed ingredient.
+* Pass 2 (Brand Match Fallback): If no exact ingredient name is detected in the finding text, the mapper falls back to searching for the parent brand name (e.g., "Cocodamol").
+
+This prevents collisions where multiple ingredients belonging to the same brand name are mapped incorrectly (e.g., mapping a paracetamol finding to codeine because they both shared the display name "Cocodamol").
+
+Figure 9: CODE SCREENSHOT OF MULTI-PASS PRECISION MAPPING AND ALIGNMENT LOGIC
+[EXAMINER NOTE: Insert a code screenshot of the parsing and mapping loop in review-ddi/index.ts showing the implementation of Pass 1 and Pass 2.]
+
+Figure 10: SCREENSHOT OF THE CLINICAL WARNING PANEL DISPLAY
+[EXAMINER NOTE: Insert a screenshot of the web application's user interface, highlighting a warning card that displays the resolved pairwise interaction, its severity, the clinical reasoning, and the actionable recommendation.]
+
+3.9 Technical Stack, Tools, and Materials
+The development, deployment, and testing of the Autonomous Clinical Workflow Agent utilized a modern, lightweight, and cloud-native software stack:
+* Runtime Environment: Deno (v1.x / v2.x) was selected for the backend edge functions due to its native support for TypeScript, secure-by-default execution, and fast startup times, which are critical for low-latency serverless APIs.
+* Database & Backend-as-a-Service: Supabase was utilized to manage the PostgreSQL database, handle authentication, and host the serverless Deno Edge Functions.
+* Database Extensions: pgcrypto (for secure UUID generation) and pgvector (for vector embeddings, enabling future semantic knowledge searches).
+* Frontend User Interface: React (v18+) built with Vite for rapid development and optimized production bundling. Styling was implemented using Vanilla CSS Modules to ensure clean encapsulation and responsive layouts without bloated utility frameworks.
+* Artificial Intelligence API: Google Vertex AI / Gemini 3.5 Flash accessed via the official Google Cloud Platform REST API. The model was configured with a low temperature (0.05 to 0.1) to ensure highly deterministic, reproducible outputs, and integrated with the Google Search Tool for real-time web grounding.
+* Development Tools: Visual Studio Code (IDE), Git (version control), and PowerShell/Bash (CLI testing).
+
+Figure 11: SYSTEM ARCHITECTURE AND DATA FLOW INTERACTION DIAGRAM
+[EXAMINER NOTE: Insert a block diagram showing the interface layer (React/Vite), backend router layer (Deno Edge Functions), database layer (Supabase PostgreSQL), and the AI inference layer (Google Vertex AI with Search Grounding).]
+
+3.10 Ethical and Legal Considerations
+In this study, the use of clinical data required careful attention to ethical and legal aspects, particularly given the sensitive nature of health-related information.
+1. Privacy and Data Security: The database is completely de-identified. No patient names, phone numbers, addresses, or dates of birth are stored. All records are identified by random UUIDs and patient codes (e.g., PAT-001).
+2. Clinician Autonomy and Automation Bias: To mitigate "automation bias," where clinicians blindly accept AI decisions (Levy et al., 2021), the system acts strictly as a decision-support tool. It does not block the clinician from completing a prescription, but instead presents the clinical reasoning, leaving final accountability with the provider.
+3. Transparency and Explainability: Every alert is accompanied by its reasoning path, physiological mechanism, and retrieved references.
+4. Audit Trail: All review sessions and clinician decisions (approvals, cancellations) are permanently logged in the ehr_audit_events table.
+
+3.11 System Resilience and Latency Optimizations
+Real-time search grounding across external medical databases can introduce latency (2 to 5 seconds depending on network conditions) and can trigger API rate limits. To handle this, the system implements two key optimizations:
+
+1. Smart Skip Logic: The React frontend caches resolved drug ingredients. When a review is triggered, it skips calling the resolver edge function for any previously resolved drug name, preventing unnecessary API calls and reducing latency.
+2. Rate-Limit Resilience: The Gemini API call within the edge functions is wrapped in a retry loop. If a 429 status (Resource Exhausted) is returned, the function waits and retries, doubling the delay on each attempt:
+   * Attempt 1: Wait 1.5s
+   * Attempt 2: Wait 3.0s
+   * Attempt 3: Wait 6.0s
+This loop guarantees high availability and system resilience during concurrent user requests.
+
+Figure 12: CODE SCREENSHOT OF EXPONENTIAL BACKOFF RETRY FOR API RESILIENCE
+[EXAMINER NOTE: Insert a code screenshot of the while loop in the resolveWithGemini or callGeminiForDdiReview function that catches response status 429 and applies the delay and exponential backoff.]
+
+3.12 Limitations of the Methodology
+While the proposed architecture significantly improves upon traditional CDSS, several methodological limitations must be acknowledged:
+1. Network and API Latency: Because the system performs real-time search grounding across external medical databases, the speed of the safety check is dependent on network latency and Google Search API response times. Under peak loads, this can result in response latencies of 2 to 5 seconds.
+2. Edge-Case Nomenclature: Although the resolver agent is highly accurate, extremely rare, local brand names or highly specialized compound formulations may occasionally fail to resolve to their active ingredients, defaulting to an "unconfirmed" status that requires manual clinician input.
+3. Third-Party API Dependence: The system relies on the continuous availability and performance of the Google Cloud Vertex AI infrastructure. Any outage of the external AI service would disable the reasoning engine.

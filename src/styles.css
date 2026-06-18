@@ -477,6 +477,161 @@ textarea {
   opacity: 0.58;
 }
 
+.fetchEvidenceButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  margin-top: 10px;
+  padding: 0 10px;
+  color: var(--blue);
+  font-size: 0.8rem;
+  font-weight: 850;
+  border: 1px solid rgba(34, 94, 168, 0.22);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fetchEvidenceButton:hover:not(:disabled) {
+  background: rgba(34, 94, 168, 0.08);
+  border-color: rgba(34, 94, 168, 0.44);
+}
+
+.fetchEvidenceButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+/* ── Allergy Review Button ─────────────────────────────────────────────────── */
+.allergyReviewButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 18px;
+  font-size: 0.88rem;
+  font-weight: 750;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #92400e;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.15);
+}
+
+.allergyReviewButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+  border-color: rgba(245, 158, 11, 0.65);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+  transform: translateY(-1px);
+}
+
+.allergyReviewButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+/* ── Allergy Report Section ────────────────────────────────────────────────── */
+.allergyReport {
+  margin-top: 16px;
+  border-top: 2px solid rgba(245, 158, 11, 0.25);
+  padding-top: 12px;
+}
+
+.allergyReportHeader {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b45309;
+  margin-bottom: 10px;
+}
+
+.allergyFindingCard {
+  border-left: 3px solid rgba(245, 158, 11, 0.5) !important;
+}
+
+/* ── Allergy Fetch References Button ──────────────────────────────────────── */
+.allergyFetchButton {
+  color: #b45309 !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+.allergyFetchButton:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.6) !important;
+}
+
+/* ── Allergy Severity Badges ───────────────────────────────────────────────── */
+.severityBadge.allergy-critical {
+  background: rgba(220, 38, 38, 0.12);
+  color: #991b1b;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.severityBadge.allergy-high {
+  background: rgba(245, 158, 11, 0.14);
+  color: #92400e;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.severityBadge.allergy-medium {
+  background: rgba(251, 191, 36, 0.14);
+  color: #78350f;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.severityBadge.allergy-low {
+  background: rgba(251, 191, 36, 0.08);
+  color: #92400e;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.severityBadge.allergy-none {
+  background: rgba(16, 185, 129, 0.1);
+  color: #065f46;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* ── Disease Severity Badges ───────────────────────────────────────────────── */
+.severityBadge.disease-critical {
+  background: rgba(109, 40, 217, 0.15);
+  color: #5b21b6;
+  border: 1px solid rgba(109, 40, 217, 0.4);
+}
+
+.severityBadge.disease-high {
+  background: rgba(139, 92, 246, 0.15);
+  color: #6d28d9;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.severityBadge.disease-medium {
+  background: rgba(167, 139, 250, 0.15);
+  color: #7c3aed;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+}
+
+.severityBadge.disease-low {
+  background: rgba(196, 181, 253, 0.12);
+  color: #8b5cf6;
+  border: 1px solid rgba(196, 181, 253, 0.3);
+}
+
+.severityBadge.disease-none {
+  background: rgba(16, 185, 129, 0.1);
+  color: #065f46;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
 .prescriptionFields {
   display: grid;
   grid-template-columns: minmax(180px, 1.2fr) minmax(88px, 0.45fr) minmax(88px, 0.45fr);
@@ -1379,4 +1534,93 @@ textarea {
     max-height: 250px;
   }
 }
+
+.findingReasoning {
+  background: var(--amber-bg);
+  border-left: 3px solid var(--amber);
+  padding: 10px 14px;
+  margin: 10px 0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.findingReasoning strong {
+  color: var(--amber);
+  display: block;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+.findingReasoning p {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+/* ── Disease Review Button ─────────────────────────────────────────────────── */
+.diseaseReviewButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 18px;
+  font-size: 0.88rem;
+  font-weight: 750;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #4c1d95; /* Deep purple */
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  box-shadow: 0 1px 4px rgba(168, 85, 247, 0.15);
+}
+
+.diseaseReviewButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+  border-color: rgba(168, 85, 247, 0.65);
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.25);
+  transform: translateY(-1px);
+}
+
+.diseaseReviewButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+/* ── Disease Report Section ────────────────────────────────────────────────── */
+.diseaseReport {
+  margin-top: 16px;
+  border-top: 2px solid rgba(168, 85, 247, 0.25);
+  padding-top: 12px;
+}
+
+.diseaseReportHeader {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6d28d9;
+  margin-bottom: 10px;
+}
+
+.diseaseFindingCard {
+  border-left: 3px solid rgba(168, 85, 247, 0.5) !important;
+}
+
+/* ── Disease Fetch References Button ──────────────────────────────────────── */
+.diseaseFetchButton {
+  color: #6d28d9 !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
+}
+
+.diseaseFetchButton:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.08) !important;
+  border-color: rgba(168, 85, 247, 0.6) !important;
+}
+
 
